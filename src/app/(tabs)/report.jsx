@@ -115,7 +115,7 @@ function PingingCheckmark() {
 export default function ReportScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { photos, sentAt, locationStatus, locationError, reportId } = useCameraStore();
+  const { photos, sentAt, locationStatus, locationError } = useCameraStore();
   const { isOnline } = useNetworkStatus();
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -199,6 +199,11 @@ export default function ReportScreen() {
   };
 
   const closeForm = useCallback((sosStatus) => {
+    // Read the report id live from the store before discardReport() resets
+    // it to null — the memoized `reportId` from an earlier render (when the
+    // location call was still in flight) could be stale and silently drop
+    // the id from the nav params, hiding the report status on the map.
+    const { reportId: currentReportId } = cameraStore.getSnapshot();
     cameraStore.discardReport();
     // sosStatus tells the map screen which confirmation overlay to show:
     // "received" (online submit) | "prepared" (offline composer opened) |
@@ -206,10 +211,10 @@ export default function ReportScreen() {
     // report so the map can show the persistent "report received" notif.
     router.replace(
       sosStatus
-        ? { pathname: "/(tabs)", params: { sosStatus, ...(reportId ? { reportId } : {}) } }
+        ? { pathname: "/(tabs)", params: { sosStatus, ...(currentReportId ? { reportId: currentReportId } : {}) } }
         : "/(tabs)"
     );
-  }, [router, reportId]);
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {
