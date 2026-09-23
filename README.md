@@ -1,4 +1,4 @@
-## Mobile Client of AGAP.AI >.<
+## Mobile Client of AGAP.ai >.<
 
 ### Instructions
 1. `npm install`
