@@ -44,4 +44,5 @@ example
 
 .env
 opencode.jsonc
+opencode.json
 AGENTS.md
