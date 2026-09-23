@@ -3,7 +3,7 @@
 // MapLibre overlay GeoJSON (track line, markers). Node-testable (no RN imports).
 //
 // Input text comes from src/lib/pagasaPdf/extractText.js and looks like the
-// PAGASA 2-page bulletin structure (see test-fixtures/pagasa/TCB3_pilandok.txt),
+// PAGASA 2-page bulletin structure (see scripts/test-fixtures/pagasa/TCB3_pilandok.txt),
 // e.g.:
 //   TROPICAL CYCLONE BULLETIN NR. 3
 //   Tropical Depression PILANDOK

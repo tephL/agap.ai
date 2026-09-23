@@ -7,7 +7,7 @@ const assert = require("node:assert");
 
 const { parsePagasaBulletinText, buildTrackGeojson, trackBounds, trackFitBounds } = require("../src/lib/typhoonTracks/trackJson.js");
 
-const fixture = readFileSync(join(process.cwd(), "test-fixtures", "pagasa", "TCB3_pilandok.txt"), "utf8");
+const fixture = readFileSync(join(__dirname, "test-fixtures", "pagasa", "TCB3_pilandok.txt"), "utf8");
 const m = parsePagasaBulletinText(fixture);
 
 assert.ok(m, "should parse pilandok fixture");
