@@ -124,7 +124,7 @@ function HighlightedBlock({ block }) {
     <View
       style={[
         styles.highlightBlock,
-        { backgroundColor: config.bgColor, borderLeftColor: config.accentColor },
+        { borderLeftColor: config.accentColor },
       ]}
     >
       <View style={styles.highlightHeader}>
@@ -135,7 +135,7 @@ function HighlightedBlock({ block }) {
           {config.label}
         </Text>
       </View>
-      <Text style={[styles.highlightText, { color: config.labelColor }]}>
+      <Text style={styles.highlightText}>
         {block.text}
       </Text>
     </View>
@@ -200,18 +200,18 @@ const styles = StyleSheet.create({
     maxWidth: "85%",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 1,
   },
   userText: {
     color: colors.white,
-    fontSize: 15,
+    fontSize: 12,
     lineHeight: 21,
   },
   assistantRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "flex-end",
     marginBottom: 6,
     paddingHorizontal: 14,
     paddingRight: 48,
@@ -224,21 +224,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
-    marginTop: 4,
+    marginBottom: 12, 
   },
   assistantBubble: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    borderBottomLeftRadius: 6,
-    paddingHorizontal: 14,
+    // backgroundColor: "#F4F5F7",
+    // borderRadius: 20,
+    // borderBottomLeftRadius: 6,
+    // paddingHorizontal: 14,
     paddingVertical: 12,
-    maxWidth: "85%",
+    maxWidth: "80%",
     gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
+    // // borderWidth: 1,
+    // borderColor: "#ECECEC",
   },
   normalText: {
     color: colors.text,
@@ -246,6 +243,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   highlightBlock: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     borderLeftWidth: 3,
     paddingHorizontal: 12,
@@ -271,7 +269,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   highlightText: {
-    fontSize: 14,
+    color: "#111827",
+    fontSize: 12,
     lineHeight: 20,
   },
 });

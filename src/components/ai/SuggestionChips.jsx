@@ -36,7 +36,7 @@ export default function SuggestionChips({ suggestions, onSelect }) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 14,
+    // paddingHorizontal: 14,
     paddingTop: 6,
     paddingBottom: 4,
   },
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     marginBottom: 8,
-    paddingLeft: 2,
+    paddingLeft: 8,
   },
   headerText: {
     fontSize: 12,
