@@ -135,7 +135,7 @@ function HighlightedBlock({ block }) {
           {config.label}
         </Text>
       </View>
-      <Text style={[styles.highlightText, { color: config.labelColor }]}>
+      <Text style={styles.highlightText}>
         {block.text}
       </Text>
     </View>
@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   highlightText: {
+    color: "#111827",
     fontSize: 14,
     lineHeight: 20,
   },
