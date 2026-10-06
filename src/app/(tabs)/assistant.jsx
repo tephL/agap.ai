@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import colors from "@/constants/colors";
 import ChatBubble, { parseSuggestions } from "@/components/ai/ChatBubble";
 import SuggestionChips from "@/components/ai/SuggestionChips";
@@ -45,6 +45,7 @@ const WELCOME_MESSAGE = {
 
 export default function Assistant() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { question, hazardLayerId, hazardVar } = useLocalSearchParams();
   const { isOnline, isConnected, isInternetReachable } = useNetworkStatus();
   const { coords: liveCoords } = useLiveLocation();
@@ -310,6 +311,13 @@ export default function Assistant() {
       >
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={styles.headerLeft}>
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)')}
+              style={styles.headerButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={20} color="#fff" />
+            </TouchableOpacity>
             <View style={styles.headerAvatar}>
               <Image
                 source={require("../../assets/icons/logo.png")}

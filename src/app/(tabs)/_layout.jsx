@@ -55,7 +55,11 @@ export default function RootLayout() {
           tabBarActiveTintColor: '#1c1c1cff',
           headerShown: false
         }}
-        tabBar={(props) => <CustomTabBar {...props} />}
+        tabBar={(props) => {
+          const routeName = props.state?.routes?.[props.state.index]?.name;
+          if (routeName === 'assistant') return null;
+          return <CustomTabBar {...props} />;
+        }}
       >
         <Tabs.Screen name="index" options={{ title: 'Map' }} />
         <Tabs.Screen name="assistant" options={{ title: 'Assistant' }} />
