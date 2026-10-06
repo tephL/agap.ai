@@ -10,6 +10,7 @@ import {
   Platform,
   Image,
   Alert,
+  Keyboard
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -54,6 +55,7 @@ export default function Assistant() {
     coordsRef.current = liveCoords;
   }, [liveCoords]);
   const [messages, setMessages] = useState([]);
+  const [inputFocused, setInputFocused] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -62,6 +64,21 @@ export default function Assistant() {
   const initialized = useRef(false);
   const pendingQuestion = useRef(null);
   const wasOnlineRef = useRef(isOnline);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setInputFocused(true);
+    });
+
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setInputFocused(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Hazard context captured from the "?" button on a hazard layer. Router
   // params are strings, so re-quote the var level. Only sent with the
@@ -360,7 +377,10 @@ export default function Assistant() {
         <View
           style={[
             styles.inputBar,
-            { paddingBottom: Math.max(insets.bottom, 10) },
+            { paddingBottom: inputFocused 
+              ? 5
+              : 30
+            },
           ]}
         >
           {suggestions.length > 0 && (
@@ -377,14 +397,20 @@ export default function Assistant() {
               </Text>
             </View>
           )}
-          <View style={[styles.inputWrap, !isOnline && styles.inputWrapOffline]}>
+          <View style={[
+            styles.inputWrap, 
+            {marginBottom: inputFocused ? 10 : 30}, 
+            !isOnline && styles.inputWrapOffline
+          ]}>
             <TextInput
               ref={inputRef}
               style={styles.textInput}
-              placeholder={isOnline ? "Tanungin mo ako kahit ano..." : "Walang internet connection..."}
+              placeholder={isOnline ? "Magtanong..." : "Walang internet connection..."}
               placeholderTextColor={colors.placeholder}
               value={input}
               onChangeText={setInput}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               multiline
               maxLength={2000}
               editable={!loading && isOnline}
@@ -537,7 +563,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatContent: {
-    flexGrow: 1,
     paddingTop: 12,
     paddingBottom: 8,
   },
@@ -547,6 +572,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
     borderTopWidth: 1,
     borderTopColor: "#EEEEEE",
+    gap: 10, 
   },
   inputWrap: {
     flexDirection: "row",
@@ -559,6 +585,7 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     minHeight: 46,
     maxHeight: 120,
+    // marginBottom: 16
   },
   textInput: {
     flex: 1,
