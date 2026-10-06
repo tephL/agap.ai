@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   userText: {
     color: colors.white,
-    fontSize: 15,
+    fontSize: 12,
     lineHeight: 21,
   },
   assistantRow: {
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   highlightText: {
     color: "#111827",
-    fontSize: 14,
+    fontSize: 12,
     lineHeight: 20,
   },
 });
