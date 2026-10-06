@@ -124,7 +124,7 @@ function HighlightedBlock({ block }) {
     <View
       style={[
         styles.highlightBlock,
-        { backgroundColor: config.bgColor, borderLeftColor: config.accentColor },
+        { borderLeftColor: config.accentColor },
       ]}
     >
       <View style={styles.highlightHeader}>
@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   highlightBlock: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     borderLeftWidth: 3,
     paddingHorizontal: 12,
