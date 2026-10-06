@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   chatArea: {
     flex: 1,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: "#F9FAFB",
   },
   welcomeContainer: {
     alignItems: "center",
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
   inputBar: {
     paddingHorizontal: 12,
     paddingTop: 6,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: "#F9FAFB",
     borderTopWidth: 1,
     borderTopColor: "#EEEEEE",
   },
