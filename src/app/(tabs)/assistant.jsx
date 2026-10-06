@@ -252,9 +252,9 @@ export default function Assistant() {
       "Burahin ang usapan",
       "Mabubura ang lahat ng iyong kasaysayan ng chat sa assistant.",
       [
-        { text: "Kanselahin", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Burahin",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
