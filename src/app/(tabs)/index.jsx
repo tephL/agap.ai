@@ -88,6 +88,8 @@ const MAPTILER_API_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY;
 const PH_BOUNDS = [116.9, 4.5, 126.6, 21.2];
 const PH_CENTER = [121.7740, 12.8797];
 const MAP_STYLE_URL = `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_API_KEY}`;
+const BUILDINGS_3D_MIN_ZOOM = 12;
+const BUILDINGS_3D_MAX_ZOOM = 14.5;
 
 // Demo switch: while true the app uses the bundled Luzon sample instead of
 // the live PAGASA mirror (shared by the map overlay and the Weather tab).
@@ -203,6 +205,10 @@ const DAM_PULSE_PERIODS = { normal: 3500, caution: 2000, danger: 1100 };
 const ROUTE_FIT_PADDING = { top: 120, right: 80, bottom: 320, left: 80 };
 // Stable empty array so prop identity stays consistent across renders.
 const EMPTY_SLUGS = [];
+// Vertical gap between the stacked map notification banners.
+const NOTIF_GAP = 12;
+// Top offset of the notification stack (below the status bar area).
+const NOTIF_STACK_TOP = 35;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -316,6 +322,8 @@ export default function Index() {
   // typhoon alert state (session-only dismissal)
   const [activeTyphoon, setActiveTyphoon] = useState(null);
   const [typhoonDismissed, setTyphoonDismissed] = useState(false);
+
+  const typhoonBannerVisible = !typhoonDismissed && !!activeTyphoon;
 
   // "Report received" overlay shown after returning from the report form.
   // The sosStatus/reportId params are consumed exactly once (guarded by the
@@ -1914,8 +1922,8 @@ export default function Index() {
         mapStyle={flatMapStyle ?? MAP_STYLE_URL}
         logoEnabled={false}
         attributionEnabled={false}
-        compassEnabled={true}
-        compassViewPosition={3}
+        // compassEnabled={true}
+        // compassViewPosition={3}
         rotateEnabled={true}
         pitchEnabled={true}
         onDidFinishLoadingMap={() => setMapReady(true)}
@@ -1950,37 +1958,10 @@ export default function Index() {
               <VectorSource
                 id="maptilerBuildings"
                 url={`https://api.maptiler.com/tiles/v3/tiles.json?key=${MAPTILER_API_KEY}`}
-                minzoom={14}
+                minzoom={BUILDINGS_3D_MIN_ZOOM}
                 maxzoom={18}
               >
-                <Layer
-                  id="buildings3d"
-                  type="fill-extrusion"
-                  source-layer="building"
-                  minzoom={14}
-                  maxzoom={18}
-                  layout={{
-                    "fill-extrusion-height": [
-                      "coalesce",
-                      ["get", "render_height"],
-                      ["get", "height"],
-                      10,
-                    ],
-                    "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-                  }}
-                  paint={{
-                    "fill-extrusion-color": [
-                      "interpolate",
-                      ["linear"],
-                      ["coalesce", ["get", "render_height"], ["get", "height"], 10],
-                      0,   "#e0e7ee",
-                      20,  "#c8d6e0",
-                      60,  "#a0b4c4",
-                      120, "#7a98b0",
-                    ],
-                    "fill-extrusion-opacity": 0.85,
-                  }}
-                />
+
               </VectorSource>
             )}
             {visibleLayers.stormSignals &&
@@ -2861,28 +2842,33 @@ export default function Index() {
         />
       )}
 
-      {!typhoonDismissed && activeTyphoon && (
-        <TyphoonAlertBanner
-          typhoon={activeTyphoon}
-          onDismiss={handleTyphoonDismiss}
-          onViewDetails={handleTyphoonViewDetails}
-          onAskPreparedness={handleTyphoonAskPreparedness}
-        />
-      )}
+      {(typhoonBannerVisible ||
+        dispatches.length > 0 ||
+        cancelledDispatches.length > 0 ||
+        showReportBar) && (
+        <View pointerEvents="box-none" style={styles.notifStack}>
+          {typhoonBannerVisible && (
+            <TyphoonAlertBanner
+              typhoon={activeTyphoon}
+              onDismiss={handleTyphoonDismiss}
+              onViewDetails={handleTyphoonViewDetails}
+              onAskPreparedness={handleTyphoonAskPreparedness}
+            />
+          )}
 
-      <DispatchNotificationBar
-        dispatches={dispatches}
-        cancelledDispatches={cancelledDispatches}
-        style={activeTyphoon && !typhoonDismissed ? { top: 160 } : undefined}
-      />
+          <DispatchNotificationBar
+            dispatches={dispatches}
+            cancelledDispatches={cancelledDispatches}
+          />
 
-      {showReportBar && (
-        <ReportSubmittedBar
-          report={{ reportId: activeReport.reportId }}
-          onViewDetails={handleReportViewDetails}
-          onCancel={handleReportCancel}
-          style={{ top: dispatches.length > 0 ? 300 : 35 }}
-        />
+          {showReportBar && (
+            <ReportSubmittedBar
+              report={{ reportId: activeReport.reportId }}
+              onViewDetails={handleReportViewDetails}
+              onCancel={handleReportCancel}
+            />
+          )}
+        </View>
       )}
 
       {sosReceivedVariant && (
@@ -3087,5 +3073,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     includeFontPadding: false,
+  },
+  // Stacked map notifications (typhoon banner, dispatch bar, report bar).
+  // A single absolutely-positioned column so flex layout keeps the ~12px gap
+  // between bars as any of them expands/collapses/appears/disappears.
+  notifStack: {
+    position: 'absolute',
+    top: NOTIF_STACK_TOP,
+    left: 12,
+    right: 12,
+    gap: NOTIF_GAP,
+    zIndex: 100,
+    elevation: 100,
   },
 });
