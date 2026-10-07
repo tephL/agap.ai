@@ -1,10 +1,10 @@
 import React from "react";
 import {
+  Animated,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -141,6 +141,58 @@ interface MapLayerRowConfig {
   label: string;
   activeColor?: string;
   description?: string;
+  icon?: string;
+}
+
+const TRACK_WIDTH = 46;
+const THUMB_SIZE = 22;
+const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 6;
+
+/** #rgb / #rrggbb -> rgba() so a layer's accent can be tinted softly. */
+function withAlpha(hex: string, alpha: number): string {
+  const raw = hex.replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const value = parseInt(full, 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${
+    value & 255
+  }, ${alpha})`;
+}
+
+/** Slim pill switch — thumb slides with the layer's accent colour. */
+function LayerToggle({ visible, color }: { visible: boolean; color: string }) {
+  const progress = React.useRef(new Animated.Value(visible ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(progress, {
+      toValue: visible ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [visible, progress]);
+
+  const thumbX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, THUMB_TRAVEL],
+  });
+
+  return (
+    <View
+      style={[
+        styles.toggleTrack,
+        { backgroundColor: visible ? color : "#E5E7EB" },
+      ]}
+    >
+      <Animated.View
+        style={[styles.toggleThumb, { transform: [{ translateX: thumbX }] }]}
+      />
+    </View>
+  );
 }
 
 function MapLayerRow({
@@ -152,26 +204,47 @@ function MapLayerRow({
   visible: boolean;
   onToggle: () => void;
 }) {
+  const color = config.activeColor ?? "#9CA3AF";
+  const iconName = (config.icon ??
+    "layers-outline") as React.ComponentProps<typeof Ionicons>["name"];
+
   return (
-    <View style={styles.row}>
-      <View style={styles.rowMain}>
-        <View
-          style={[styles.dot, { backgroundColor: config.activeColor ?? "#9CA3AF" }]}
-        />
-        <View style={styles.info}>
-          <Text style={styles.label}>{config.label}</Text>
-          {config.description ? (
-            <Text style={styles.description}>{config.description}</Text>
-          ) : null}
-        </View>
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onToggle}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: visible }}
+      accessibilityLabel={config.label}
+      style={[
+        styles.card,
+        {
+          backgroundColor: visible ? withAlpha(color, 0.08) : "#F9FAFB",
+          borderColor: visible ? withAlpha(color, 0.35) : "#E9ECF2",
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.cardBadge,
+          { backgroundColor: visible ? color : withAlpha(color, 0.14) },
+        ]}
+      >
+        <Ionicons name={iconName} size={21} color={visible ? "#FFFFFF" : color} />
       </View>
-      <Switch
-        value={visible}
-        onValueChange={onToggle}
-        trackColor={{ false: "#E5E7EB", true: "#208AEF" }}
-        thumbColor="#FFFFFF"
-      />
-    </View>
+
+      <View style={styles.cardInfo}>
+        <Text
+          style={[styles.cardLabel, { color: visible ? "#111827" : "#374151" }]}
+        >
+          {config.label}
+        </Text>
+        {config.description ? (
+          <Text style={styles.cardDescription}>{config.description}</Text>
+        ) : null}
+      </View>
+
+      <LayerToggle visible={visible} color={color} />
+    </TouchableOpacity>
   );
 }
 
@@ -270,18 +343,24 @@ export default function HazardLayersPanel({
               </ScrollView>
             </>
           ) : (
-            <ScrollView style={styles.list} nestedScrollEnabled>
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.mapListContent}
+              nestedScrollEnabled
+            >
               <Text style={styles.subtitle}>
                 Choose which map features are shown. Toggles apply instantly.
               </Text>
-              {(MAP_LAYERS ?? []).map((layer) => (
-                <MapLayerRow
-                  key={layer.key}
-                  config={layer}
-                  visible={visibleLayers?.[layer.key] ?? false}
-                  onToggle={() => onToggleLayer?.(layer.key)}
-                />
-              ))}
+              <View style={styles.cardList}>
+                {(MAP_LAYERS ?? []).map((layer) => (
+                  <MapLayerRow
+                    key={layer.key}
+                    config={layer}
+                    visible={visibleLayers?.[layer.key] ?? false}
+                    onToggle={() => onToggleLayer?.(layer.key)}
+                  />
+                ))}
+              </View>
             </ScrollView>
           )}
         </Pressable>
@@ -345,6 +424,60 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     paddingBottom: 8,
+  },
+  mapListContent: {
+    paddingBottom: 8,
+  },
+  cardList: {
+    gap: 10,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  cardBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  cardDescription: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  toggleTrack: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    padding: 3,
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
   row: {
     flexDirection: "row",

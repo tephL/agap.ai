@@ -8,24 +8,28 @@ export const MAP_LAYERS = [
   {
     key: "typhoons",
     label: "Typhoons",
+    icon: "thunderstorm-outline",
     activeColor: "#0EA5E9",
     description: "Active typhoon tracks and public warnings",
   },
   {
     key: "stormSignals",
     label: "Storm Signals",
+    icon: "warning-outline",
     activeColor: "#E32F31",
     description: "Bagyong dala-distribute: PAGASA TCWS signal per probinsya",
   },
   {
     key: "lpas",
     label: "Low Pressure Area",
+    icon: "radio-button-off",
     activeColor: "#0EA5E9",
     description: "Low pressure areas shown as hollow circles",
   },
   {
     key: "rain",
     label: "Rain Forecast",
+    icon: "rainy-outline",
     activeColor: "#3B82F6",
     description: "Weekly rainfall forecast per region",
   },
