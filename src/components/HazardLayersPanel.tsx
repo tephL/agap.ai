@@ -79,9 +79,7 @@ function LayerRow({ config, active, onSelect, onAskAI }: LayerRowProps) {
       style={[
         styles.card,
         {
-          backgroundColor: active
-            ? withAlpha(palette.stroke, 0.07)
-            : "#FFFFFF",
+          backgroundColor: "#FFFFFF",
           borderColor: active
             ? withAlpha(palette.stroke, 0.4)
             : "rgba(15,23,42,0.08)",
@@ -204,7 +202,9 @@ interface MapLayerRowConfig {
 
 const TRACK_WIDTH = 46;
 const THUMB_SIZE = 22;
-const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 6;
+// travel = track width minus thumb, the 3px padding and the 1.5px border on
+// each side (the border only shows while the switch is off)
+const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 9;
 
 /** #rgb / #rrggbb -> rgba() so a layer's accent can be tinted softly. */
 function withAlpha(hex: string, alpha: number): string {
@@ -245,7 +245,10 @@ function LayerToggle({ visible, color }: { visible: boolean; color: string }) {
     <View
       style={[
         styles.toggleTrack,
-        { backgroundColor: visible ? color : "#E5E7EB" },
+        {
+          backgroundColor: visible ? color : "#FFFFFF",
+          borderColor: visible ? color : "#D1D5DB",
+        },
       ]}
     >
       <Animated.View
@@ -493,6 +496,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 18,
     borderWidth: 1,
+    backgroundColor: "#FFFFFF",
+    borderColor: "rgba(15,23,42,0.08)",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -523,6 +528,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 28,
     borderRadius: 14,
+    borderWidth: 1.5,
     padding: 3,
     justifyContent: "center",
     alignItems: "flex-start",

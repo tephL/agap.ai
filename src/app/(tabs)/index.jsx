@@ -175,10 +175,9 @@ const OFFLINE_PACK_RADIUS_KM = 5;
 const SELECTED_PERSON_FLY_ZOOM = 15;
 // Zoomed out just enough that the full 1.5 km halo ring stays on-screen.
 const DAM_FLY_ZOOM = 13.5;
-// Weather fills (storm signals, typhoon cone, rain regions) get expensive to
-// draw when the whole country is on screen, so keep them from zooming out
-// past this.
-const WEATHER_MIN_ZOOM = 12;
+// Weather fills (storm signals, typhoon cone, rain regions) may be zoomed all
+// the way out to country level — never tighter than this.
+const WEATHER_MIN_ZOOM = 5;
 const SELECTED_PERSON_FLY_DURATION_MS = 1000;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PERSON_CARD_HEIGHT_ESTIMATE = SCREEN_HEIGHT * 0.4;
