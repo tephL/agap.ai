@@ -319,6 +319,15 @@ export default function Index() {
   const [activeTyphoon, setActiveTyphoon] = useState(null);
   const [typhoonDismissed, setTyphoonDismissed] = useState(false);
 
+  // NOTIF
+  const NOTIF_GAP = 12;
+  const TYPHOON_BANNER_FALLBACK_HEIGHT = 230;
+  const [typhoonBannerHeight, setTyphoonBannerHeight] = useState(0);
+  const typhoonBannerVisible = !typhoonDismissed && !!activeTyphoon;
+  const dispatchBarTop = typhoonBannerVisible
+  ? Math.max(typhoonBannerHeight, TYPHOON_BANNER_FALLBACK_HEIGHT) + NOTIF_GAP
+  : 35;
+
   // "Report received" overlay shown after returning from the report form.
   // The sosStatus/reportId params are consumed exactly once (guarded by the
   // ref) and then cleared off the route, so the overlay doesn't re-show every
@@ -2836,20 +2845,30 @@ export default function Index() {
         />
       )}
 
-      {!typhoonDismissed && activeTyphoon && (
+    {typhoonBannerVisible && (
+      <View
+        pointerEvents="box-none"
+        style={styles.typhoonBannerWrap}
+        onLayout={(e) => setTyphoonBannerHeight(e.nativeEvent.layout.height)}
+      >
         <TyphoonAlertBanner
           typhoon={activeTyphoon}
           onDismiss={handleTyphoonDismiss}
           onViewDetails={handleTyphoonViewDetails}
           onAskPreparedness={handleTyphoonAskPreparedness}
         />
-      )}
+      </View>
+    )}
 
-      <DispatchNotificationBar
-        dispatches={dispatches}
-        cancelledDispatches={cancelledDispatches}
-        style={activeTyphoon && !typhoonDismissed ? { top: 160 } : undefined}
-      />
+    <DispatchNotificationBar
+      dispatches={dispatches}
+      cancelledDispatches={cancelledDispatches}
+      style={
+        typhoonBannerVisible
+          ? { top: typhoonBannerHeight + NOTIF_GAP }
+          : undefined
+      }
+    />
 
       {showReportBar && (
         <ReportSubmittedBar
@@ -3062,5 +3081,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     includeFontPadding: false,
+  },
+  typhoonBannerWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
 });
