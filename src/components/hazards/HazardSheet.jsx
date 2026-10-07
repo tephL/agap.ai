@@ -24,7 +24,6 @@ import {
   formatObservationAge,
 } from "./dams/damStatus";
 import DamsTab from "./dams/DamsTab";
-import TabPlaceholder from "./common/TabPlaceholder";
 import StormSignalsTab from "./stormSignals/StormSignalsTab";
 import TyphoonsTab from "./typhoons/TyphoonsTab";
 import RainForecastTab, { rainColor, rainLabel } from "./rain/RainForecastTab";
@@ -772,21 +771,6 @@ function HazardSheetInner({
             typhoonsLoading={typhoonsLoading}
             rainLoading={rainLoading}
             onChangeTab={onChangeTab}
-          />
-        )}
-        {!slug && activeTab !== "dams" && activeTab !== "weatherBulletins" && activeTab !== "typhoons" && activeTab !== "rainForecast" && activeTab !== "nearYou" && (
-          <TabPlaceholder
-            icon={
-              activeTab === "faultLines" ? "map-outline"
-              : activeTab === "volcanoes" ? "flame-outline"
-              : "newspaper-outline"
-            }
-            title={
-              activeTab === "faultLines" ? "Fault Lines"
-              : activeTab === "volcanoes" ? "Volcanoes"
-              : "Weather Bulletins"
-            }
-            subtitle="Coming soon. This feature will be available in a future update."
           />
         )}
 

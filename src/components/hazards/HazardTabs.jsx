@@ -24,16 +24,6 @@ const TABS = [
     icon: "rainy-outline",
   },
   { key: "dams", label: "Dams", icon: "water-outline" },
-  {
-    key: "faultLines",
-    label: "Fault Lines",
-    icon: "map-outline",
-  },
-  {
-    key: "volcanoes",
-    label: "Volcanoes",
-    icon: "flame-outline",
-  },
 ];
 
 export default function HazardTabs({ activeTab, onChangeTab }) {
