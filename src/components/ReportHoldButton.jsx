@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../constants/colors";
 
@@ -12,30 +12,8 @@ const BUTTON_SIZE = 58;
 export default function ReportHoldButton({ onComplete }) {
   const progress = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
   const animation = useRef(null);
   const completed = useRef(false);
-
-  // Idle pulse so the button invites a press
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
 
   const rightRotate = progress.interpolate({
     inputRange: [0, 0.5, 1],
@@ -105,26 +83,6 @@ export default function ReportHoldButton({ onComplete }) {
       accessibilityLabel="Hold to open report"
     >
       {/* Idle pulse (sits behind everything) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.pulse,
-          {
-            opacity: pulse.interpolate({
-              inputRange: [0, 0.15, 1],
-              outputRange: [0.4, 0.28, 0],
-            }),
-            transform: [
-              {
-                scale: pulse.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1.6],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
 
       <Animated.View
         style={[styles.stack, { transform: [{ scale: pressScale }] }]}
@@ -167,10 +125,6 @@ export default function ReportHoldButton({ onComplete }) {
           </Animated.View>
         </View>
       </Animated.View>
-
-      <Text style={styles.hint} pointerEvents="none">
-        HOLD FOR HELP
-      </Text>
     </Pressable>
   );
 }
@@ -185,13 +139,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-  },
-  pulse: {
-    position: "absolute",
-    width: RING_SIZE,
-    height: RING_SIZE,
-    borderRadius: RING_SIZE / 2,
-    backgroundColor: colors.primary,
   },
   stack: {
     width: RING_SIZE,
@@ -263,13 +210,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 10,
-  },
-  hint: {
-    position: "absolute",
-    bottom: -16,
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-    color: colors.muted,
   },
 });
