@@ -275,31 +275,14 @@ function MapLayerRow({
       accessibilityRole="switch"
       accessibilityState={{ checked: visible }}
       accessibilityLabel={config.label}
-      style={[
-        styles.card,
-        {
-          backgroundColor: visible ? withAlpha(color, 0.07) : "#FFFFFF",
-          borderColor: visible
-            ? withAlpha(color, 0.4)
-            : "rgba(15,23,42,0.08)",
-          shadowOpacity: visible ? 0.14 : 0.06,
-          elevation: visible ? 6 : 2,
-        },
-      ]}
+      style={styles.card}
     >
-      <View
-        style={[
-          styles.cardBadge,
-          { backgroundColor: visible ? color : withAlpha(color, 0.14) },
-        ]}
-      >
-        <Ionicons name={iconName} size={21} color={visible ? "#FFFFFF" : color} />
+      <View style={[styles.cardBadge, { backgroundColor: withAlpha(color, 0.14) }]}>
+        <Ionicons name={iconName} size={21} color={color} />
       </View>
 
       <View style={styles.cardInfo}>
-        <Text
-          style={[styles.cardLabel, { color: visible ? "#111827" : "#374151" }]}
-        >
+        <Text style={[styles.cardLabel, { color: "#111827" }]}>
           {config.label}
         </Text>
         {config.description ? (

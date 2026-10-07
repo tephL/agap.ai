@@ -85,14 +85,19 @@ export async function setActiveHazardLayerId(layerId) {
   });
 }
 
-/** Whether the map legend was dismissed by the user. Defaults to visible. */
+/**
+ * Whether the map legend chip is collapsed. Defaults to collapsed until the
+ * user explicitly opens it, so a freshly-triggered layer shows a pill first
+ * instead of an open card.
+ */
 export async function getLegendHidden() {
   const db = await openDb();
   const row = await db.getFirstAsync(
     "SELECT value FROM ui_pref WHERE key = ?;",
     ["legend_hidden"]
   );
-  return row?.value === "1";
+  if (!row) return true;
+  return row.value === "1";
 }
 
 export async function setLegendHidden(hidden) {

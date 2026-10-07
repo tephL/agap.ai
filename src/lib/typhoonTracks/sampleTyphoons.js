@@ -151,16 +151,16 @@ function extentFor(kmh) {
   return 100;
 }
 
-// The sample typhoon pool contains a single storm: PEPITO (MAN-YI), the real
-// Super Typhoon that crossed Luzon in November 2024. Modeled on the 8 AM
-// 17 Nov 2024 TCB stage: center over the sea east of Quezon, having just made
-// its first landfall at Catanduanes (peak 195 km/h), about to make its second
-// landfall in Aurora, then to weaken across Sierra Madre / Central Luzon and
-// exit into the West Philippine Sea.
+// The sample typhoon pool contains a single storm: TINO, a fictional name used
+// for the demo; the track itself is modeled on the real Super Typhoon PEPITO
+// (MAN-YI) from the 8 AM 17 Nov 2024 TCB stage: center over the sea east of
+// Quezon, having just made its first landfall at Catanduanes (peak 195 km/h),
+// about to make its second landfall in Aurora, then to weaken across Sierra
+// Madre / Central Luzon and exit into the West Philippine Sea.
 export const SAMPLE_TYPHOONS = [
   makeStorm({
-    eventId: "pepito-tcb17",
-    name: "PEPITO",
+    eventId: "tino-tcb17",
+    name: "TINO",
     internationalName: "MAN-YI",
     category: "Super Typhoon",
     current: { lon: 122.55, lat: 14.55, windspeed: 185, gust: 230, pressure: 940, status: "Super Typhoon" },

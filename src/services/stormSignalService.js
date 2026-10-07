@@ -195,7 +195,7 @@ const SAMPLE_LUZON = {
     url: null,
   },
   cyclone: {
-    name: "PEPITO",
+    name: "TINO",
     internationalName: "MAN-YI",
     category: "SUPER TYPHOON",
     center: "Over the sea east of Quezon",

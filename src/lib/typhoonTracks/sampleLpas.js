@@ -24,7 +24,7 @@ export const SAMPLE_LPAS = [
       text: "West northwestward at 20 km/h",
     },
     note:
-      "A low pressure area east of northern Luzon being absorbed by PEPITO's circulation. Localized rains expected over Cagayan Valley and the eastern seaboard.",
+      "A low pressure area east of northern Luzon being absorbed by TINO's circulation. Localized rains expected over Cagayan Valley and the eastern seaboard.",
   },
 ];
 

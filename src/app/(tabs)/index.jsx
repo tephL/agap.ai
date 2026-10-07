@@ -175,6 +175,10 @@ const OFFLINE_PACK_RADIUS_KM = 5;
 const SELECTED_PERSON_FLY_ZOOM = 15;
 // Zoomed out just enough that the full 1.5 km halo ring stays on-screen.
 const DAM_FLY_ZOOM = 13.5;
+// Weather fills (storm signals, typhoon cone, rain regions) get expensive to
+// draw when the whole country is on screen, so keep them from zooming out
+// past this.
+const WEATHER_MIN_ZOOM = 12;
 const SELECTED_PERSON_FLY_DURATION_MS = 1000;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PERSON_CARD_HEIGHT_ESTIMATE = SCREEN_HEIGHT * 0.4;
@@ -506,26 +510,28 @@ export default function Index() {
   // PAGASA TCWS storm signals overlay
   const [stormSignals, setStormSignals] = useState(null);
   const [stormSignalsError, setStormSignalsError] = useState(false);
-  const [stormLegendHidden, setStormLegendHidden] = useState(false);
+  // legends start as collapsed chips — nothing is expanded until the user
+  // taps a pill (see handleToggleLayer / handleChangeTab)
+  const [stormLegendHidden, setStormLegendHidden] = useState(true);
   const [selectedStormProvince, setSelectedStormProvince] = useState(null);
   const stormAutoFitDoneRef = useRef(false);
 
   // GDACS typhoon tracks overlay
   const [typhoons, setTyphoons] = useState(null);
   const [typhoonsError, setTyphoonsError] = useState(false);
-  const [typhoonLegendHidden, setTyphoonLegendHidden] = useState(false);
+  const [typhoonLegendHidden, setTyphoonLegendHidden] = useState(true);
   const [selectedTyphoon, setSelectedTyphoon] = useState(null);
 
   // Low pressure areas overlay
   const [lpas, setLpas] = useState(null);
   const [lpasError, setLpasError] = useState(false);
-  const [lpaLegendHidden, setLpaLegendHidden] = useState(false);
+  const [lpaLegendHidden, setLpaLegendHidden] = useState(true);
   const [selectedLpa, setSelectedLpa] = useState(null);
 
   // Weekly rain forecast overlay
   const [rainForecast, setRainForecast] = useState(null);
   const [rainError, setRainError] = useState(false);
-  const [rainLegendHidden, setRainLegendHidden] = useState(false);
+  const [rainLegendHidden, setRainLegendHidden] = useState(true);
   const [selectedRainRegion, setSelectedRainRegion] = useState(null);
 
   // fetch when toggled on; stale state is ignored while visibleLayers is off
@@ -897,20 +903,11 @@ export default function Index() {
     [router, activeId, resolveCurrentHazardVar]
   );
 
-  // legend visibility (persisted): expands whenever the active layer
-  // changes, otherwise restores what the user last chose
-  const [legendHidden, setLegendHiddenState] = useState(false);
-  const prevActiveLayerRef = useRef(activeId);
+  // legend visibility (persisted): a freshly-triggered layer shows the
+  // collapsed chip first; after that the panel just restores whatever the
+  // user last chose (never force-opens a card)
+  const [legendHidden, setLegendHiddenState] = useState(true);
   useEffect(() => {
-    const prev = prevActiveLayerRef.current;
-    prevActiveLayerRef.current = activeId;
-    if (prev !== null && activeId !== prev) {
-      // a different layer was picked — always re-show its legend
-      setLegendHiddenState(false);
-      setLegendHidden(false).catch(() => undefined);
-      return;
-    }
-    // same layer (or first mount) — restore the persisted choice
     getLegendHidden()
       .then(setLegendHiddenState)
       .catch(() => undefined);
@@ -1958,7 +1955,7 @@ export default function Index() {
           }}
           maxBounds={weatherOverlaysActive ? PAR_BOUNDS : PH_BOUNDS}
           minZoom={weatherOverlaysActive
-            ? (activeId ? DAM_FLY_ZOOM : 4)
+            ? (activeId ? DAM_FLY_ZOOM : WEATHER_MIN_ZOOM)
             : (activeId ? DAM_FLY_ZOOM : 6)}
           maxZoom={20}
           trackUserLocation={locationGranted ? "default" : undefined}
