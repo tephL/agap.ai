@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     height: 104,
     paddingHorizontal: 8,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    // borderTopLeftRadius: 28,
+    // borderTopRightRadius: 28,
     // soft shadow cast upward
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: -6 },
