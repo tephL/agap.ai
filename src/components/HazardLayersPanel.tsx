@@ -201,7 +201,11 @@ export default function HazardLayersPanel({
   visibleLayers,
   onToggleLayer,
 }: HazardLayersPanelProps) {
-  const [tab, setTab] = React.useState<PanelTab>("hazards");
+  const [tab, setTab] = React.useState<PanelTab>("map");
+  // The floating layers button always lands on the "Map layers" tab.
+  React.useEffect(() => {
+    if (visible) setTab("map");
+  }, [visible]);
   if (!visible) return null;
 
   return (

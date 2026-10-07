@@ -2622,17 +2622,6 @@ export default function Index() {
       </Map>
 
       <TouchableOpacity
-        style={styles.hazardsButton}
-        onPress={handleHazardsPress}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Open hazards drawer"
-      >
-        <Ionicons name="warning-outline" size={18} color="#E32F31" />
-        <Text style={styles.hazardsButtonText}>Monitor</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
         style={styles.locateButton}
         onPress={handleLocatePress}
         activeOpacity={0.7}
@@ -3013,29 +3002,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#208AEF',
     borderWidth: 2,
     borderColor: '#ffffff',
-  },
-  // Red pill, bottom-left — opens the hazards drawer (dam statuses).
-  hazardsButton: {
-    position: 'absolute',
-    left: 16,
-    bottom: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 48,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  hazardsButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#E32F31',
   },
   locateButtonIcon: {
     fontSize: 22,
