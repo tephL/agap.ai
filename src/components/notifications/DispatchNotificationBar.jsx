@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -11,41 +12,42 @@ import { formatETA } from "../../services/routeService";
 import { haversineMeters, formatDistance } from "../../utils/haversine";
 import colors from "../../constants/colors";
 
-const PULSE_DURATION_MS = 2000;
+const PULSE_DURATION_MS = 1800;
+const SUCCESS = "#16A34A";
+const DANGER = "#DC2626";
 
 /**
- * Persistent bottom notification bar shown on the citizen map when
- * a response team has been dispatched to one of the user's clusters.
+ * Persistent notification bar shown on the citizen map when a response team
+ * has been dispatched to one of the user's clusters.
  *
- * Each dispatch card cannot be dismissed; it can only be minimized/expanded
- * via the chevron toggle so the active dispatch stays visible to the citizen.
+ * Each dispatch card cannot be dismissed. It can only be minimized or
+ * expanded via the chevron toggle so the active dispatch stays visible.
  *
  * Props:
  * - dispatches: Array<{
  *     assignment_id, team: { name, lat, lng },
  *     cluster: { lat, lng }, etaSeconds, status
  *   }>
- * - cancelledDispatches: Array<{ assignment_id, cluster }> — recently
+ * - cancelledDispatches: Array<{ assignment_id, cluster }>, recently
  *   cancelled dispatches, rendered as a short-lived "Dispatch cancelled" card
  */
-export default function DispatchNotificationBar({ dispatches, cancelledDispatches = [], style }) {
+export default function DispatchNotificationBar({
+  dispatches,
+  cancelledDispatches = [],
+  style,
+}) {
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (dispatches.length === 0) return;
+    pulse.setValue(0);
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: PULSE_DURATION_MS,
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: PULSE_DURATION_MS,
-          useNativeDriver: false,
-        }),
-      ])
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: PULSE_DURATION_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
     );
     loop.start();
     return () => loop.stop();
@@ -53,13 +55,17 @@ export default function DispatchNotificationBar({ dispatches, cancelledDispatche
 
   if (dispatches.length === 0 && cancelledDispatches.length === 0) return null;
 
-  const opacity = pulse.interpolate({
+  const ringOpacity = pulse.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0.5, 0.35, 0],
+  });
+  const ringScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.4, 1],
+    outputRange: [1, 1.7],
   });
 
   // Hide any cancelled notice for a cluster that already has an active
-  // dispatch — a new dispatch supersedes the earlier cancellation.
+  // dispatch. A new dispatch supersedes the earlier cancellation.
   const activeClusterIds = new Set(
     dispatches.map((d) => d.cluster?.cluster_id).filter((id) => id != null)
   );
@@ -73,7 +79,8 @@ export default function DispatchNotificationBar({ dispatches, cancelledDispatche
         <DispatchCard
           key={d.assignment_id}
           dispatch={d}
-          opacity={opacity}
+          ringOpacity={ringOpacity}
+          ringScale={ringScale}
         />
       ))}
       {visibleCancelled.map((d) => (
@@ -97,25 +104,28 @@ function CancelledCard({ dispatch }) {
   if (hidden) return null;
 
   return (
-    <View style={styles.cancelledCard}>
-      <View style={styles.cancelledIconWrap}>
-        <Ionicons name="close" size={16} color="#ffffff" />
-      </View>
-      <View style={styles.cancelledBody}>
-        <Text style={styles.cancelledTitle} numberOfLines={1}>
-          Dispatch cancelled
-        </Text>
-        {cluster && (
-          <Text style={styles.cancelledSubtitle} numberOfLines={1}>
-            {`Cluster #${cluster.cluster_id ?? ""}: help is no longer on the way`}
+    <View style={styles.card}>
+      <View style={[styles.accent, { backgroundColor: DANGER }]} />
+      <View style={[styles.inner, styles.cancelledInner]}>
+        <View style={[styles.iconCircle, { backgroundColor: DANGER }]}>
+          <Ionicons name="close" size={20} color={colors.white} />
+        </View>
+        <View style={styles.headerTextWrap}>
+          <Text style={styles.title} numberOfLines={1}>
+            Dispatch cancelled
           </Text>
-        )}
+          {cluster && (
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {`Cluster #${cluster.cluster_id ?? ""}: help is no longer on the way`}
+            </Text>
+          )}
+        </View>
       </View>
     </View>
   );
 }
 
-function DispatchCard({ dispatch, opacity }) {
+function DispatchCard({ dispatch, ringOpacity, ringScale }) {
   const { team, cluster, etaSeconds, status } = dispatch;
   const [minimized, setMinimized] = useState(false);
 
@@ -126,57 +136,80 @@ function DispatchCard({ dispatch, opacity }) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <Animated.View style={[styles.pulseDot, { opacity }]}>
-            <View style={styles.pulseInner} />
-          </Animated.View>
+      <View style={styles.accent} />
+
+      <View style={styles.inner}>
+        <View style={styles.header}>
+          <View style={styles.iconSlot}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.ring,
+                { opacity: ringOpacity, transform: [{ scale: ringScale }] },
+              ]}
+            />
+            <View style={styles.iconCircle}>
+              <Ionicons name="navigate" size={18} color={colors.white} />
+            </View>
+          </View>
+
           <View style={styles.headerTextWrap}>
             <Text style={styles.title} numberOfLines={1}>
               Help is on the way!
             </Text>
             <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
               <Text style={styles.statusText}>
                 {status === "dispatched" ? "En route" : "Dispatching"}
               </Text>
             </View>
           </View>
+
+          <Pressable
+            hitSlop={8}
+            onPress={() => setMinimized((m) => !m)}
+            style={styles.minimizeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={
+              minimized ? "Expand notification" : "Minimize notification"
+            }
+          >
+            <Ionicons
+              name={minimized ? "chevron-down" : "chevron-up"}
+              size={16}
+              color={colors.text}
+            />
+          </Pressable>
         </View>
-        <Pressable
-          hitSlop={8}
-          onPress={() => setMinimized((m) => !m)}
-          style={styles.minimizeBtn}
-          accessibilityRole="button"
-          accessibilityLabel={minimized ? "Expand notification" : "Minimize notification"}
-        >
-          <Ionicons
-            name={minimized ? "chevron-down" : "chevron-up"}
-            size={16}
-            color={colors.muted}
-          />
-        </Pressable>
-      </View>
 
-      {!minimized && (
-        <View style={styles.cardBody}>
-          <View style={styles.infoRow}>
-            <Ionicons name="people" size={14} color={colors.primary} />
-            <Text style={styles.teamName} numberOfLines={2}>
-              {`A team from ${team?.name} is on the way` ?? "Response Team"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="navigate" size={14} color={colors.muted} />
-            <Text style={styles.etaText}>{formatETA(etaSeconds)}</Text>
-            {distanceMeters != null && (
-              <Text style={styles.distanceText}>
-                {formatDistance(distanceMeters)}
+        {!minimized && (
+          <View style={styles.body}>
+            <View style={styles.infoStrip}>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={styles.teamName} numberOfLines={2}>
+                {team?.name
+                  ? `A team from ${team.name} is on the way`
+                  : "A response team is on the way"}
               </Text>
-            )}
+            </View>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaChip}>
+                <Ionicons name="time-outline" size={14} color={colors.primary} />
+                <Text style={styles.etaText}>{formatETA(etaSeconds)}</Text>
+              </View>
+              {distanceMeters != null && (
+                <View style={styles.metaChip}>
+                  <Ionicons name="location-outline" size={14} color={colors.muted} />
+                  <Text style={styles.distanceText}>
+                    {formatDistance(distanceMeters)}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 }
@@ -188,141 +221,149 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     zIndex: 20,
-    gap: 8,
+    gap: 10,
   },
   card: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    flexDirection: "row",
+    backgroundColor: colors.white,
+    borderRadius: 20,
     overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 10,
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  accent: {
+    width: 5,
+    backgroundColor: SUCCESS,
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
+  inner: {
     flex: 1,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconSlot: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ring: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: SUCCESS,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: SUCCESS,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTextWrap: {
     flex: 1,
     gap: 4,
   },
-  pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#22c55e",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pulseInner: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#22c55e",
-  },
   title: {
     fontSize: 15,
     fontWeight: "800",
     color: colors.text,
+    letterSpacing: 0.1,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.muted,
   },
   minimizeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardBody: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  infoRow: {
+
+  statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    alignSelf: "flex-start",
+    gap: 5,
+    backgroundColor: "#DCFCE7",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: SUCCESS,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#166534",
+  },
+
+  body: {
+    marginTop: 12,
+    gap: 10,
+  },
+  infoStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
   },
   teamName: {
     flex: 1,
     fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: colors.text,
   },
-  statusBadge: {
-    backgroundColor: "#dcfce7",
-    alignSelf: "flex-start", 
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  metaRow: {
+    flexDirection: "row",
+    gap: 8,
   },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#166534",
+  metaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
   },
   etaText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.primary,
   },
   distanceText: {
     fontSize: 12,
+    fontWeight: "700",
     color: colors.muted,
-    marginLeft: 4,
   },
-  cancelledCard: {
+
+  cancelledInner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  cancelledIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#B91C1C",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelledBody: {
-    flex: 1,
-    gap: 2,
-  },
-  cancelledTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#7F1D1D",
-  },
-  cancelledSubtitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#991B1B",
+    gap: 12,
   },
 });
