@@ -17,6 +17,7 @@ const COPY = {
     icon: "checkmark",
     iconBg: "#ECFDF5",
     iconColor: "#16A34A",
+    accent: "#16A34A",
   },
   prepared: {
     title: "Your SOS message is ready",
@@ -24,6 +25,7 @@ const COPY = {
     icon: "checkmark",
     iconBg: "#ECFDF5",
     iconColor: "#16A34A",
+    accent: "#16A34A",
   },
   active: {
     title: "You cancelled your offline SOS report",
@@ -31,18 +33,24 @@ const COPY = {
     icon: "close",
     iconBg: "#FEF2F2",
     iconColor: "#DC2626",
+    accent: "#DC2626",
   },
 };
 
 const AUTO_CLOSE_MS = 10000;
-const RING_SIZE = 90;
-const ICON_BG_SIZE = 68;
+const RING_SIZE = 104;
+const RING_THICKNESS = 6;
+const INNER_SIZE = RING_SIZE - RING_THICKNESS * 2;
+const ICON_BG_SIZE = 72;
 
 export default function SosReceivedOverlay({ variant = "received", onDone }) {
   const copy = COPY[variant] ?? COPY.received;
+  const accent = copy.accent ?? colors.primary;
 
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const popupScale = useRef(new Animated.Value(0.95)).current;
+  const popupScale = useRef(new Animated.Value(0.92)).current;
+  const popupShift = useRef(new Animated.Value(18)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -57,12 +65,25 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
       }),
     ]);
 
-    const cardAnim = Animated.timing(popupScale, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    });
+    const cardAnim = Animated.parallel([
+      Animated.timing(popupScale, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(popupShift, {
+        toValue: 0,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]);
 
     Animated.parallel([cardAnim, ringAnim]).start(({ finished }) => {
       if (finished) onDoneRef.current?.();
@@ -71,12 +92,16 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
     return () => {
       progressAnim.stopAnimation();
       popupScale.stopAnimation();
+      popupShift.stopAnimation();
+      backdropOpacity.stopAnimation();
     };
   }, []);
 
   const handleDismiss = () => {
     progressAnim.stopAnimation();
     popupScale.stopAnimation();
+    popupShift.stopAnimation();
+    backdropOpacity.stopAnimation();
     onDoneRef.current?.();
   };
 
@@ -94,15 +119,15 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
   });
 
   return (
-    <View style={styles.backdrop}>
+    <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
       <Animated.View
         style={[
           styles.card,
-          { transform: [{ scale: popupScale }] },
+          { transform: [{ translateY: popupShift }, { scale: popupScale }] },
         ]}
       >
         <View style={styles.ringWrap}>
-          <View style={styles.ringTrack} />
+          <View style={[styles.ringTrack, { backgroundColor: accent + "22" }]} />
 
           <View style={styles.rightClip}>
             <Animated.View
@@ -112,13 +137,11 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
                 { transform: [{ rotate: rightRotate }] },
               ]}
             >
-              <View style={styles.rightFill} />
+              <View style={[styles.rightFill, { backgroundColor: accent }]} />
             </Animated.View>
           </View>
 
-          <Animated.View
-            style={[styles.leftClip, { opacity: leftOpacity }]}
-          >
+          <Animated.View style={[styles.leftClip, { opacity: leftOpacity }]}>
             <Animated.View
               style={[
                 styles.spinner,
@@ -126,17 +149,15 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
                 { transform: [{ rotate: leftRotate }] },
               ]}
             >
-              <View style={styles.leftFill} />
+              <View style={[styles.leftFill, { backgroundColor: accent }]} />
             </Animated.View>
           </Animated.View>
 
-          <View
-            style={[
-              styles.iconBg,
-              { backgroundColor: copy.iconBg },
-            ]}
-          >
-            <Ionicons name={copy.icon} size={32} color={copy.iconColor} />
+          {/* White gap that turns the filled pie into a thin ring */}
+          <View style={styles.ringInner} />
+
+          <View style={[styles.iconBg, { backgroundColor: copy.iconBg }]}>
+            <Ionicons name={copy.icon} size={36} color={copy.iconColor} />
           </View>
         </View>
 
@@ -150,44 +171,48 @@ export default function SosReceivedOverlay({ variant = "received", onDone }) {
         >
           <Text style={styles.closeButtonText}>CLOSE</Text>
         </TouchableOpacity>
+
+        <View style={styles.autoRow}>
+          <Ionicons name="time-outline" size={12} color={colors.muted} />
+          <Text style={styles.autoText}>Closes automatically</Text>
+        </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(24, 32, 51, 0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
     alignItems: "center",
     justifyContent: "center",
   },
   card: {
-    width: "85%",
-    maxWidth: 340,
+    width: "86%",
+    maxWidth: 360,
     backgroundColor: colors.white,
-    borderRadius: 16,
-    paddingTop: 24,
-    paddingBottom: 24,
+    borderRadius: 28,
+    paddingTop: 32,
+    paddingBottom: 20,
     paddingHorizontal: 24,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 16,
   },
   ringWrap: {
     width: RING_SIZE,
     height: RING_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 22,
   },
   ringTrack: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: RING_SIZE / 2,
-    backgroundColor: "#E5E7EB",
   },
   rightClip: {
     position: "absolute",
@@ -209,18 +234,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
   },
-  spinnerRight: {
-    left: -RING_SIZE / 2,
-  },
-  spinnerLeft: {
-    left: 0,
-  },
+  spinnerRight: { left: -RING_SIZE / 2 },
+  spinnerLeft: { left: 0 },
   rightFill: {
     width: RING_SIZE / 2,
     height: RING_SIZE,
     position: "absolute",
     right: 0,
-    backgroundColor: colors.primary,
     borderTopRightRadius: RING_SIZE / 2,
     borderBottomRightRadius: RING_SIZE / 2,
   },
@@ -229,9 +249,15 @@ const styles = StyleSheet.create({
     height: RING_SIZE,
     position: "absolute",
     left: 0,
-    backgroundColor: colors.primary,
     borderTopLeftRadius: RING_SIZE / 2,
     borderBottomLeftRadius: RING_SIZE / 2,
+  },
+  ringInner: {
+    position: "absolute",
+    width: INNER_SIZE,
+    height: INNER_SIZE,
+    borderRadius: INNER_SIZE / 2,
+    backgroundColor: colors.white,
   },
   iconBg: {
     width: ICON_BG_SIZE,
@@ -241,32 +267,50 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: "800",
     color: colors.text,
     textAlign: "center",
   },
   sub: {
     marginTop: 8,
-    fontSize: 13,
+    marginBottom: 24,
+    paddingHorizontal: 4,
+    fontSize: 14,
     fontWeight: "500",
     color: colors.muted,
     textAlign: "center",
-    lineHeight: 19,
-    marginBottom: 22,
+    lineHeight: 20,
   },
   closeButton: {
     width: "100%",
-    height: 46,
-    borderRadius: 12,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
   closeButtonText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.white,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
+  },
+  autoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 14,
+  },
+  autoText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.muted,
   },
 });

@@ -1,14 +1,17 @@
-import { useRef } from "react";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
+import React, { useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../constants/colors";
 
 const HOLD_MS = 3000;
 const RING_SIZE = 76;
-const BUTTON_SIZE = 60;
+const RING_THICKNESS = 4;
+const INNER_SIZE = RING_SIZE - RING_THICKNESS * 2;
+const BUTTON_SIZE = 58;
 
 export default function ReportHoldButton({ onComplete }) {
   const progress = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
   const animation = useRef(null);
   const completed = useRef(false);
 
@@ -25,6 +28,15 @@ export default function ReportHoldButton({ onComplete }) {
     outputRange: [0, 0, 1, 1],
   });
 
+  const pressScale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.93],
+  });
+  const iconScale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.12],
+  });
+
   const stopHold = () => {
     animation.current?.stop();
     animation.current = null;
@@ -33,9 +45,16 @@ export default function ReportHoldButton({ onComplete }) {
   const onPressIn = () => {
     completed.current = false;
     progress.setValue(0);
+    Animated.spring(press, {
+      toValue: 1,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+
     animation.current = Animated.timing(progress, {
       toValue: 1,
       duration: HOLD_MS,
+      easing: Easing.linear,
       useNativeDriver: true,
     });
     animation.current.start(({ finished }) => {
@@ -46,11 +65,11 @@ export default function ReportHoldButton({ onComplete }) {
   };
 
   const onPressOut = () => {
-    if (!completed.current) {
-      stopHold();
-      progress.setValue(0);
-      return;
-    }
+    Animated.spring(press, {
+      toValue: 0,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
     stopHold();
     progress.setValue(0);
   };
@@ -63,38 +82,49 @@ export default function ReportHoldButton({ onComplete }) {
       accessibilityRole="button"
       accessibilityLabel="Hold to open report"
     >
-      <View style={styles.track} />
-
-      <View style={styles.rightClip} pointerEvents="none">
-        <Animated.View
-          style={[
-            styles.spinner,
-            styles.spinnerRight,
-            { transform: [{ rotate: rightRotate }] },
-          ]}
-        >
-          <View style={styles.rightFill} />
-        </Animated.View>
-      </View>
+      {/* Idle pulse (sits behind everything) */}
 
       <Animated.View
-        style={[styles.leftClip, { opacity: leftOpacity }]}
-        pointerEvents="none"
+        style={[styles.stack, { transform: [{ scale: pressScale }] }]}
       >
-        <Animated.View
-          style={[
-            styles.spinner,
-            styles.spinnerLeft,
-            { transform: [{ rotate: leftRotate }] },
-          ]}
-        >
-          <View style={styles.leftFill} />
-        </Animated.View>
-      </Animated.View>
+        <View style={styles.track} />
 
-      <View style={styles.button}>
-        <Ionicons name="megaphone" size={28} color={colors.white} />
-      </View>
+        <View style={styles.rightClip} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.spinner,
+              styles.spinnerRight,
+              { transform: [{ rotate: rightRotate }] },
+            ]}
+          >
+            <View style={styles.rightFill} />
+          </Animated.View>
+        </View>
+
+        <Animated.View
+          style={[styles.leftClip, { opacity: leftOpacity }]}
+          pointerEvents="none"
+        >
+          <Animated.View
+            style={[
+              styles.spinner,
+              styles.spinnerLeft,
+              { transform: [{ rotate: leftRotate }] },
+            ]}
+          >
+            <View style={styles.leftFill} />
+          </Animated.View>
+        </Animated.View>
+
+        {/* White gap that turns the filled pie into a thin ring */}
+        <View style={styles.ringInner} />
+
+        <View style={styles.button}>
+          <Animated.View style={{ transform: [{ scale: iconScale }] }}>
+            <Ionicons name="megaphone" size={26} color={colors.white} />
+          </Animated.View>
+        </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -109,6 +139,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
+  },
+  stack: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
   },
   track: {
     ...StyleSheet.absoluteFillObject,
@@ -135,12 +171,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
   },
-  spinnerRight: {
-    left: -RING_SIZE / 2,
-  },
-  spinnerLeft: {
-    left: 0,
-  },
+  spinnerRight: { left: -RING_SIZE / 2 },
+  spinnerLeft: { left: 0 },
   rightFill: {
     width: RING_SIZE / 2,
     height: RING_SIZE,
@@ -159,6 +191,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: RING_SIZE / 2,
     borderBottomLeftRadius: RING_SIZE / 2,
   },
+  ringInner: {
+    position: "absolute",
+    width: INNER_SIZE,
+    height: INNER_SIZE,
+    borderRadius: INNER_SIZE / 2,
+    backgroundColor: colors.white,
+  },
   button: {
     width: BUTTON_SIZE,
     height: BUTTON_SIZE,
@@ -166,12 +205,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
-    borderColor: colors.white,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
     elevation: 10,
   },
 });

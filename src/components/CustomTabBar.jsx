@@ -1,5 +1,12 @@
-import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  Alert,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -9,6 +16,7 @@ import { requestReportLocation } from "../services/reportService";
 import useNetworkStatus from "../hooks/useNetworkStatus";
 import ReportHoldButton from "./ReportHoldButton";
 
+// Base icon names. The outline variant is used when a tab is not focused.
 const ICONS = {
   index: "map",
   assistant: "sparkles",
@@ -17,6 +25,71 @@ const ICONS = {
 };
 
 const primaryColor = colors.primary;
+const INACTIVE = "#9AA0A6";
+
+function TabItem({ focused, label, iconName, onPress }) {
+  const anim = useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: focused ? 1 : 0,
+      friction: 7,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, anim]);
+
+  const pillStyle = {
+    opacity: anim,
+    transform: [
+      {
+        scaleX: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.4, 1],
+        }),
+      },
+    ],
+  };
+
+  const iconLiftStyle = {
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -1],
+        }),
+      },
+    ],
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.tabItem}
+      activeOpacity={0.7}
+    >
+      <View style={styles.iconSlot}>
+        <Animated.View style={[styles.activePill, pillStyle]} />
+        <Animated.View style={iconLiftStyle}>
+          <Ionicons
+            name={focused ? iconName : `${iconName}-outline`}
+            size={22}
+            color={focused ? primaryColor : INACTIVE}
+          />
+        </Animated.View>
+      </View>
+      <Text
+        style={[
+          styles.label,
+          focused ? styles.labelActive : styles.labelInactive,
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function CustomTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets();
@@ -47,8 +120,8 @@ export default function CustomTabBar({ state, descriptors, navigation }) {
 
   const onHoldComplete = () => {
     cameraStore.startReport();
-    // Fire the location request immediately, in parallel with navigating —
-    // this is the ONLY call that creates the report row on the backend.
+    // Fire the location request immediately, in parallel with navigating.
+    // This is the ONLY call that creates the report row on the backend.
     // ReportScreen awaits this (via cameraStore.waitForLocation()) before
     // it uploads any photos or a description, so nothing can race ahead
     // of the report actually existing.
@@ -95,30 +168,23 @@ export default function CustomTabBar({ state, descriptors, navigation }) {
           };
 
           return (
-            <TouchableOpacity
+            <TabItem
               key={route.key}
+              focused={isFocused}
+              label={label}
+              iconName={ICONS[route.name] || "ellipse"}
               onPress={onPress}
-              style={styles.tabItem}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={ICONS[route.name] || "ellipse"}
-                size={24}
-                color={isFocused ? primaryColor : "#9AA0A6"}
-              />
-              <Text style={[styles.label, { color: isFocused ? primaryColor : "#9AA0A6" }]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+            />
           );
         })}
       </View>
 
       {centerRoute && !isOnline && (
         <View style={styles.offlineBadge} pointerEvents="none">
+          <View style={styles.offlineDot} />
           <Ionicons name="cloud-offline-outline" size={12} color={colors.white} />
           <Text style={styles.offlineBadgeText} numberOfLines={1}>
-            Offline — reports still send via text
+            Offline. Reports still send via text
           </Text>
         </View>
       )}
@@ -131,54 +197,77 @@ export default function CustomTabBar({ state, descriptors, navigation }) {
 const styles = StyleSheet.create({
   wrapper: { position: "relative" },
   hidden: { height: 0, overflow: "hidden" },
+
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "#ffffff",
     height: 104,
-    borderTopWidth: 1,
-    borderTopColor: "#eeeeee",
-    elevation: 8,
+    paddingHorizontal: 8,
+    // borderTopLeftRadius: 28,
+    // borderTopRightRadius: 28,
+    // soft shadow cast upward
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 16,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11, marginTop: 2, fontWeight: '500' },
+
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  iconSlot: {
+    width: 52,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activePill: {
+    position: "absolute",
+    width: 52,
+    height: 30,
+    borderRadius: 15,
+    // 10% tint of the brand color (works with 6-digit hex values)
+    backgroundColor: primaryColor + "1A",
+  },
+  label: { fontSize: 11, letterSpacing: 0.2 },
+  labelActive: { color: primaryColor, fontWeight: "800" },
+  labelInactive: { color: INACTIVE, fontWeight: "600" },
+
   offlineBadge: {
-    position: 'absolute',
-    alignSelf: 'center',
+    position: "absolute",
+    alignSelf: "center",
     top: -80,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    maxWidth: 230,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    maxWidth: 260,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
     backgroundColor: colors.text,
     zIndex: 21,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  offlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#F59E0B",
   },
   offlineBadgeText: {
     color: colors.white,
     fontSize: 10,
-    fontWeight: '600',
-  },
-  centerButton: {
-    position: 'absolute',
-    alignSelf: 'center',
-    top: -28,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: primaryColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 10,
-    zIndex: 20,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
 });

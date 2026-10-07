@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../../constants/colors";
 
-const PULSE_DURATION_MS = 2000;
+const PULSE_DURATION_MS = 1800;
+const SUCCESS = "#16A34A";
 
 /**
  * Persistent floating notification bar shown on the citizen map after they
- * submit a report — while no team is on the way yet. Confirms the report was
+ * submit a report, while no team is on the way yet. Confirms the report was
  * received and offers two actions: view the report details, or cancel their
  * SOS help.
  *
@@ -30,19 +31,14 @@ export default function ReportSubmittedBar({
 
   useEffect(() => {
     if (!report) return;
+    pulse.setValue(0);
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: PULSE_DURATION_MS,
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: PULSE_DURATION_MS,
-          useNativeDriver: false,
-        }),
-      ])
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: PULSE_DURATION_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
     );
     loop.start();
     return () => loop.stop();
@@ -50,9 +46,13 @@ export default function ReportSubmittedBar({
 
   if (!report) return null;
 
-  const opacity = pulse.interpolate({
+  const ringOpacity = pulse.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0.5, 0.35, 0],
+  });
+  const ringScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.4, 1],
+    outputRange: [1, 1.7],
   });
 
   const handleCancelPress = () => {
@@ -73,63 +73,94 @@ export default function ReportSubmittedBar({
   return (
     <View style={[styles.container, style]}>
       <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.headerLeft}>
-            <Animated.View style={[styles.pulseDot, { opacity }]}>
-              <View style={styles.pulseInner} />
-            </Animated.View>
+        <View style={styles.accent} />
+
+        <View style={styles.inner}>
+          <View style={styles.header}>
+            <View style={styles.iconSlot}>
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.ring,
+                  { opacity: ringOpacity, transform: [{ scale: ringScale }] },
+                ]}
+              />
+              <View style={styles.iconCircle}>
+                <Ionicons name="checkmark" size={20} color={colors.white} />
+              </View>
+            </View>
+
             <View style={styles.headerTextWrap}>
               <Text style={styles.title} numberOfLines={1}>
                 Report received
               </Text>
               {!minimized && (
-                <Text style={styles.subtitle}>
+                <Text style={styles.subtitle} numberOfLines={2}>
                   Your SOS report has been submitted successfully.
                 </Text>
               )}
             </View>
+
+            <Pressable
+              hitSlop={8}
+              onPress={() => setMinimized((m) => !m)}
+              style={styles.minimizeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={
+                minimized ? "Expand notification" : "Minimize notification"
+              }
+            >
+              <Ionicons
+                name={minimized ? "chevron-down" : "chevron-up"}
+                size={16}
+                color={colors.text}
+              />
+            </Pressable>
           </View>
-          <Pressable
-            hitSlop={8}
-            onPress={() => setMinimized((m) => !m)}
-            style={styles.minimizeBtn}
-            accessibilityRole="button"
-            accessibilityLabel={minimized ? "Expand notification" : "Minimize notification"}
-          >
-            <Ionicons
-              name={minimized ? "chevron-down" : "chevron-up"}
-              size={16}
-              color={colors.muted}
-            />
-          </Pressable>
-        </View>
 
-        {!minimized && (
-          <View style={styles.cardBody}>
-            <Text style={styles.cancelNote}>
-              You can still cancel this report if you no longer need help.
-            </Text>
+          {!minimized && (
+            <View style={styles.body}>
+              <View style={styles.noteRow}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={14}
+                  color={colors.muted}
+                />
+                <Text style={styles.cancelNote}>
+                  You can still cancel this report if you no longer need help.
+                </Text>
+              </View>
 
-            <View style={styles.actions}>
-              <Pressable
-                style={[styles.actionBtn, styles.viewBtn]}
-                onPress={() => onViewDetails?.(report.reportId)}
-                accessibilityRole="button"
-              >
-                <Ionicons name="eye" size={14} color={colors.primary} />
-                <Text style={styles.viewBtnText}>View details</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.actionBtn, styles.cancelBtn]}
-                onPress={handleCancelPress}
-                accessibilityRole="button"
-              >
-                <Ionicons name="close-circle" size={14} color="#DC2626" />
-                <Text style={styles.cancelBtnText}>Cancel help</Text>
-              </Pressable>
+              <View style={styles.actions}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.actionBtn,
+                    styles.viewBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => onViewDetails?.(report.reportId)}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="eye-outline" size={16} color={colors.white} />
+                  <Text style={styles.viewBtnText}>View details</Text>
+                </Pressable>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.actionBtn,
+                    styles.cancelBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={handleCancelPress}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
+                  <Text style={styles.cancelBtnText}>Cancel help</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        )}
+          )}
+        </View>
       </View>
     </View>
   );
@@ -144,76 +175,93 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   card: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    flexDirection: "row",
+    backgroundColor: colors.white,
+    borderRadius: 20,
     overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 10,
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  accent: {
+    width: 5,
+    backgroundColor: SUCCESS,
+  },
+  inner: {
+    flex: 1,
     paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 8,
+    paddingVertical: 12,
   },
-  headerLeft: {
+
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    gap: 10,
+    gap: 12,
   },
-  headerTextWrap: {
-    flex: 1,
-  },
-  pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#22c55e",
+  iconSlot: {
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  pulseInner: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#22c55e",
+  ring: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: SUCCESS,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: SUCCESS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTextWrap: {
+    flex: 1,
   },
   title: {
     fontSize: 15,
     fontWeight: "800",
     color: colors.text,
+    letterSpacing: 0.1,
   },
   subtitle: {
+    marginTop: 2,
     fontSize: 12,
+    lineHeight: 16,
     color: colors.muted,
-    marginTop: 1,
   },
   minimizeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardBody: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 10,
+
+  body: {
+    marginTop: 12,
+    gap: 12,
+  },
+  noteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
   },
   cancelNote: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 16,
     color: colors.muted,
   },
   actions: {
@@ -226,18 +274,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    borderRadius: 10,
-    paddingVertical: 9,
+    height: 42,
+    borderRadius: 21,
+  },
+  pressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   viewBtn: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.primary,
   },
   viewBtnText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
+    fontWeight: "800",
+    color: colors.white,
+    letterSpacing: 0.2,
   },
   cancelBtn: {
     backgroundColor: "#FEF2F2",
@@ -246,7 +297,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#DC2626",
   },
 });
