@@ -114,6 +114,7 @@ function PingingCheckmark() {
 
 export default function ReportScreen() {
   const router = useRouter();
+  const [notesFocused, setNotesFocused] = useState(false);
   const { width } = useWindowDimensions();
   const { photos, sentAt, locationStatus, locationError } = useCameraStore();
   const { isOnline } = useNetworkStatus();
@@ -448,48 +449,62 @@ export default function ReportScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <KeyboardAvoidingView
+  <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.sentAt}>
-            Request sent: {formatSentAt(sentAt)}
-          </Text>
+        {/* Status header */}
+        <View style={styles.timeChip}>
+          <Ionicons name="time-outline" size={13} color={colors.muted} />
+          <Text style={styles.timeChipText}>Sent at {formatSentAt(sentAt)}</Text>
+        </View>
 
-          <PingingCheckmark />
+        <PingingCheckmark />
 
-          <Text style={styles.title}>{isOnline ? "SOS SENT" : "SOS PENDING"}</Text>
-          <Text style={styles.subtitle}>
-            {isOnline
-              ? "Magdagdag ng detalye upang ikaw ay aming matulungan"
-              : "Pindutin ang Submit para ipadala ang SOS gamit ang text"}
-          </Text>
+        <Text style={styles.title}>{isOnline ? "SOS SENT" : "SOS PENDING"}</Text>
+        <Text style={styles.subtitle}>
+          {isOnline
+            ? "Magdagdag ng detalye upang ikaw ay aming matulungan"
+            : "Pindutin ang Submit para ipadala ang SOS gamit ang text"}
+        </Text>
 
-          {!isOnline && (
-            <View style={styles.offlineNotice}>
-              <Ionicons name="cloud-offline-outline" size={16} color={colors.text} />
-              <Text style={styles.offlineNoticeText}>
-                You&apos;re offline. We&apos;ll open a text message with your location
-                instead. Photos aren&apos;t available right now.
-              </Text>
+        {!isOnline && (
+          <View style={styles.offlineNotice}>
+            <View style={styles.offlineIconWrap}>
+              <Ionicons name="cloud-offline-outline" size={16} color={colors.white} />
             </View>
-          )}
+            <Text style={styles.offlineNoticeText}>
+              You&apos;re offline. We&apos;ll open a text message with your
+              location instead. Photos aren&apos;t available right now.
+            </Text>
+          </View>
+        )}
+
+        {/* Description card */}
+        <View style={[styles.card, notesFocused && styles.cardFocused]}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="document-text-outline" size={16} color={colors.text} />
+            <Text style={styles.cardLabel}>Description</Text>
+            <Text style={styles.cardHint}>{isOnline ? "Recommended" : "Optional"}</Text>
+          </View>
 
           <TextInput
             style={styles.notes}
             value={notes}
             onChangeText={(value) => setNotes(value.slice(0, descriptionMax))}
+            onFocus={() => setNotesFocused(true)}
+            onBlur={() => setNotesFocused(false)}
             placeholder={
               isOnline
-                ? "Describe your situation in detail (e.g. number of people involved, specific injuries and any hazards) this information is crucial for first responders."
-                : "Add a short description to include in the text (optional)"
+                ? "Describe your situation (number of people involved, injuries, hazards). This is crucial for first responders."
+                : "Add a short description to include in the text"
             }
             placeholderTextColor={colors.placeholder}
             multiline
@@ -500,10 +515,21 @@ export default function ReportScreen() {
           <Text style={styles.counter}>
             {notes.length}/{descriptionMax}
           </Text>
+        </View>
 
-          {isOnline && (
-          <>
-          <View style={styles.galleryBox}>
+        {/* Photos card */}
+        {isOnline && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="images-outline" size={16} color={colors.text} />
+              <Text style={styles.cardLabel}>Photos</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {photos.length}/{MAX_PHOTOS}
+                </Text>
+              </View>
+            </View>
+
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -521,19 +547,16 @@ export default function ReportScreen() {
                 ]}
                 onPress={openCamera}
                 disabled={atLimit || submitting}
-                activeOpacity={0.85}
+                activeOpacity={0.8}
               >
                 <View style={styles.cameraIconWrap}>
                   <Ionicons
                     name="camera-outline"
                     size={28}
-                    color={atLimit ? colors.muted : colors.text}
+                    color={atLimit ? colors.muted : colors.primary}
                   />
                   <View
-                    style={[
-                      styles.plusBadge,
-                      atLimit && styles.plusBadgeDisabled,
-                    ]}
+                    style={[styles.plusBadge, atLimit && styles.plusBadgeDisabled]}
                   >
                     <Ionicons name="add" size={11} color={colors.white} />
                   </View>
@@ -586,62 +609,70 @@ export default function ReportScreen() {
               ))}
             </View>
           </View>
+        )}
 
-          <Text style={styles.caption}>Attach up to {MAX_PHOTOS} images only</Text>
-          </>
-          )}
-
-          <TouchableOpacity
-            style={styles.submit}
-            onPress={confirmSubmit}
-            disabled={submitting}
-            activeOpacity={0.85}
-          >
-            {submitting ? (
-              <ActivityIndicator color={colors.text} />
-            ) : (
+        {/* Actions */}
+        <TouchableOpacity
+          style={[styles.submit, submitting && styles.submitDisabled]}
+          onPress={confirmSubmit}
+          disabled={submitting}
+          activeOpacity={0.85}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Ionicons
+                name={isOnline ? "send" : "chatbubble-ellipses"}
+                size={18}
+                color={colors.white}
+              />
               <Text style={styles.submitText}>
                 {isOnline ? "SUBMIT DETAILS" : "SEND TEXT MESSAGE"}
               </Text>
-            )}
-          </TouchableOpacity>
+            </>
+          )}
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleSkip}
-            disabled={submitting}
-            hitSlop={8}
-          >
-            <Text style={styles.skip}>{isOnline ? "SKIP" : "CANCEL"}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+        <TouchableOpacity
+          onPress={handleSkip}
+          disabled={submitting}
+          hitSlop={8}
+          style={styles.skipBtn}
+        >
+          <Text style={styles.skip}>{isOnline ? "Skip for now" : "Cancel"}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  flex: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
     alignItems: "center",
   },
-  sentAt: {
-    fontSize: 12,
-    color: colors.muted,
-    textAlign: "center",
+
+  timeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
   },
+  timeChipText: { fontSize: 12, fontWeight: "600", color: colors.muted },
+
   successWrap: {
     width: 128,
     height: 128,
-    marginTop: 16,
+    marginTop: 20,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -660,80 +691,124 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
+
   title: {
-    marginTop: 8,
-    fontSize: 28,
-    fontWeight: "800",
+    marginTop: 10,
+    fontSize: 30,
+    fontWeight: "900",
     color: colors.text,
-    letterSpacing: 0.6,
+    letterSpacing: 1,
   },
   subtitle: {
     marginTop: 6,
-    marginBottom: 18,
+    marginBottom: 22,
+    paddingHorizontal: 12,
     fontSize: 14,
-    color: colors.text,
+    lineHeight: 20,
+    color: colors.muted,
     textAlign: "center",
   },
+
   offlineNotice: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
     width: "100%",
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  offlineIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   offlineNoticeText: {
     flex: 1,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 17,
     color: colors.text,
   },
-  notes: {
+
+  card: {
     width: "100%",
-    minHeight: 110,
+    backgroundColor: colors.white,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.text,
-    borderRadius: 16,
+    borderColor: colors.border,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  cardFocused: { borderColor: colors.primary, borderWidth: 1.5 },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  cardLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.text,
+    letterSpacing: 0.3,
+  },
+  cardHint: { fontSize: 11, fontWeight: "600", color: colors.muted },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+  },
+  countBadgeText: { fontSize: 11, fontWeight: "700", color: colors.text },
+
+  notes: {
+    minHeight: 110,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.text,
   },
   counter: {
     alignSelf: "flex-end",
-    marginTop: 4,
-    marginBottom: 14,
+    marginTop: 8,
     fontSize: 11,
+    fontWeight: "600",
     color: colors.muted,
   },
-  galleryBox: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: colors.text,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-  },
-  gallery: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+
+  gallery: { flexDirection: "row", alignItems: "center", gap: 12 },
   takePhoto: {
-    borderRadius: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: colors.primary,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-  takePhotoDisabled: {
-    opacity: 0.45,
-  },
+  takePhotoDisabled: { opacity: 0.45, borderColor: colors.muted },
   cameraIconWrap: {
     width: 36,
     height: 32,
@@ -751,83 +826,66 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  plusBadgeDisabled: {
-    backgroundColor: colors.muted,
-  },
-  takePhotoLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  takePhotoLabelDisabled: {
-    color: colors.muted,
-  },
+  plusBadgeDisabled: { backgroundColor: colors.muted },
+  takePhotoLabel: { fontSize: 10, fontWeight: "700", color: colors.text },
+  takePhotoLabelDisabled: { color: colors.muted },
+
   thumbWrap: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
     backgroundColor: colors.surface,
   },
-  thumbHit: {
-    flex: 1,
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
+  thumbHit: { flex: 1 },
+  thumb: { width: "100%", height: "100%" },
   removeBtn: {
     position: "absolute",
     top: 6,
     right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.text,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.65)",
     alignItems: "center",
     justifyContent: "center",
   },
+
   dots: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 6,
-    marginTop: 12,
+    marginTop: 14,
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.border,
   },
-  dotActive: {
-    backgroundColor: colors.text,
-  },
-  caption: {
-    marginTop: 8,
-    fontSize: 12,
-    color: colors.muted,
-    textAlign: "center",
-  },
+  dotActive: { width: 16, backgroundColor: colors.primary },
+
   submit: {
-    marginTop: 22,
+    marginTop: 6,
     width: "100%",
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: colors.text,
+    height: 54,
+    borderRadius: 27,
+    flexDirection: "row",
+    gap: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
+  submitDisabled: { opacity: 0.7 },
   submitText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
-    color: colors.text,
-    letterSpacing: 0.4,
+    color: colors.white,
+    letterSpacing: 0.6,
   },
-  skip: {
-    marginTop: 14,
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.text,
-    letterSpacing: 0.8,
-  },
+  skipBtn: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 16 },
+  skip: { fontSize: 14, fontWeight: "700", color: colors.muted },
 });
