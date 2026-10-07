@@ -289,20 +289,24 @@ export default function Assistant() {
   );
 
   const renderHeader = useCallback(() => {
-    if (messages.length > 1) return null;
-    return (
-      <View style={styles.welcomeContainer}>
+  if (messages.length > 1) return null;
+  return (
+    <View style={styles.welcomeContainer}>
+      <View style={styles.logoHalo}>
         <View style={styles.logoWrap}>
           <Image
             source={require("../../assets/icons/logo.png")}
             style={styles.logoImage}
           />
         </View>
-        <Text style={styles.welcomeTitle}>AGAP.ai</Text>
+      </View>
+      <Text style={styles.welcomeTitle}>AGAP.ai</Text>
+      <View style={styles.taglinePill}>
         <Text style={styles.welcomeTagline}>MAAGAP NA KA-AGAPAY</Text>
-        <Text style={styles.welcomeSubtitle}>
-          Ang iyong AI-powered na emergency assistant. Magtanong tungkol sa paghahanda sa kalamidad, mga tip sa kaligtasan, o gabay sa emerhensya.
-        </Text>
+      </View>
+      <Text style={styles.welcomeSubtitle}>
+        Ang iyong AI-powered na emergency assistant. Magtanong tungkol sa paghahanda sa kalamidad, mga tip sa kaligtasan, o gabay sa emerhensya.
+      </Text>
       </View>
     );
   }, [messages.length]);
@@ -320,44 +324,58 @@ export default function Assistant() {
   }, [loading]);
 
   return (
-    <View style={styles.screen}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              onPress={() => router.replace('/(tabs)')}
-              style={styles.headerButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="arrow-back" size={20} color="#fff" />
-            </TouchableOpacity>
+  <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => router.replace("/(tabs)")}
+            style={styles.headerButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+
+          <View style={styles.avatarSlot}>
             <View style={styles.headerAvatar}>
               <Image
                 source={require("../../assets/icons/logo.png")}
                 style={styles.headerLogo}
               />
             </View>
-            <View>
-              <Text style={styles.headerTitle}>AGAP.ai</Text>
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, !isOnline && styles.statusDotOffline]} />
-                <Text style={styles.headerStatus}>{netInfoLabel}</Text>
-              </View>
+            <View
+              style={[styles.avatarDot, !isOnline && styles.statusDotOffline]}
+            />
+          </View>
+
+          <View>
+            <Text style={styles.headerTitle}>AGAP.ai</Text>
+            <View style={styles.statusPill}>
+              <View
+                style={[styles.statusDot, !isOnline && styles.statusDotOffline]}
+              />
+              <Text style={styles.headerStatus}>{netInfoLabel}</Text>
             </View>
           </View>
-          <TouchableOpacity
-            onPress={handleClearChat}
-            style={styles.headerButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
         </View>
 
+        <TouchableOpacity
+          onPress={handleClearChat}
+          style={styles.headerButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.85)" />
+        </TouchableOpacity>
+      </View>
+
+        {/* Chat sheet */}
         <View style={styles.chatArea}>
           <FlatList
             ref={flatListRef}
@@ -370,17 +388,16 @@ export default function Assistant() {
             onContentSizeChange={scrollToBottom}
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
             style={styles.flatList}
           />
         </View>
 
+        {/* Input area */}
         <View
           style={[
             styles.inputBar,
-            { paddingBottom: inputFocused 
-              ? 5
-              : 30
-            },
+            { paddingBottom: inputFocused ? 5 : 30 },
           ]}
         >
           {suggestions.length > 0 && (
@@ -389,19 +406,26 @@ export default function Assistant() {
               onSelect={handleSuggestionSelect}
             />
           )}
+
           {!isOnline && (
             <View style={styles.offlineBar}>
-              <Ionicons name="cloud-offline" size={14} color="#B45309" />
+              <View style={styles.offlineIconWrap}>
+                <Ionicons name="cloud-offline" size={13} color={colors.white} />
+              </View>
               <Text style={styles.offlineBarText}>
-                Wala ka sa online — Hindi available ang mga AI na tugon
+                Wala ka sa online. Hindi available ang mga AI na tugon.
               </Text>
             </View>
           )}
-          <View style={[
-            styles.inputWrap, 
-            {marginBottom: inputFocused ? 10 : 30}, 
-            !isOnline && styles.inputWrapOffline
-          ]}>
+
+          <View
+            style={[
+              styles.inputWrap,
+              { marginBottom: inputFocused ? 10 : 30 },
+              inputFocused && isOnline && styles.inputWrapFocused,
+              !isOnline && styles.inputWrapOffline,
+            ]}
+          >
             <TextInput
               ref={inputRef}
               style={styles.textInput}
@@ -423,12 +447,11 @@ export default function Assistant() {
               ]}
               onPress={() => handleSend()}
               disabled={!input.trim() || loading || !isOnline}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <Ionicons
                 name="arrow-up"
-                size={22}
-                fontWeight="bold"
+                size={20}
                 color={!input.trim() || loading || !isOnline ? colors.muted : colors.white}
               />
             </TouchableOpacity>
@@ -447,12 +470,14 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 20,
     backgroundColor: colors.primary,
   },
   headerLeft: {
@@ -460,36 +485,65 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  headerAvatar: {
+  headerButton: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarSlot: {
+    width: 44,
+    height: 44,
+  },
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.45)",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   headerLogo: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+  },
+  avatarDot: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    backgroundColor: "#34D399",
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "800",
     color: colors.white,
     letterSpacing: -0.3,
   },
-  statusRow: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "flex-start",
     gap: 5,
-    marginTop: 1,
+    marginTop: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#34D399",
   },
   statusDotOffline: {
@@ -497,61 +551,81 @@ const styles = StyleSheet.create({
   },
   headerStatus: {
     fontSize: 11,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
   },
-  headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
+  // Chat sheet (rounded top corners reveal the header color behind it)
   chatArea: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F5F7FB",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: "hidden",
   },
+  flatList: {
+    flex: 1,
+  },
+  chatContent: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+
+  // Welcome
   welcomeContainer: {
     alignItems: "center",
     paddingHorizontal: 36,
-    paddingTop: 32,
-    paddingBottom: 16,
+    paddingTop: 28,
+    paddingBottom: 20,
   },
-  logoWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: colors.white,
+  logoHalo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primary + "14",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
+  },
+  logoWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 8,
     overflow: "hidden",
   },
   logoImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
+    width: 76,
+    height: 76,
+    borderRadius: 24,
   },
   welcomeTitle: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: colors.primary,
     letterSpacing: -0.5,
-    marginBottom: 2,
+    marginBottom: 8,
+  },
+  taglinePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: colors.primary + "14",
+    marginBottom: 14,
   },
   welcomeTagline: {
     fontSize: 10,
-    fontWeight: "700",
-    color: colors.muted,
+    fontWeight: "800",
+    color: colors.primary,
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 14,
   },
   welcomeSubtitle: {
     fontSize: 14,
@@ -559,79 +633,91 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 21,
   },
-  flatList: {
-    flex: 1,
-  },
-  chatContent: {
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
+
+  // Input area
   inputBar: {
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    backgroundColor: "#F9FAFB",
-    borderTopWidth: 1,
-    borderTopColor: "#EEEEEE",
-    gap: 10, 
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    backgroundColor: "#F5F7FB",
+    gap: 10,
   },
   inputWrap: {
     flexDirection: "row",
     alignItems: "flex-end",
     backgroundColor: colors.white,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingLeft: 16,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    paddingLeft: 18,
     paddingRight: 5,
-    minHeight: 46,
+    minHeight: 50,
     maxHeight: 120,
-    // marginBottom: 16
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  inputWrapFocused: {
+    borderColor: colors.primary,
   },
   textInput: {
     flex: 1,
     fontSize: 15,
     color: colors.text,
-    paddingVertical: 11,
+    paddingVertical: 13,
     maxHeight: 120,
     lineHeight: 20,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
     marginBottom: 5,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
   },
   sendButtonDisabled: {
     backgroundColor: "#E5E7EB",
     shadowOpacity: 0,
     elevation: 0,
   },
+
+  // Offline
   offlineBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FEF3C7",
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    gap: 8,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    marginBottom: 6,
+  },
+  offlineIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#F59E0B",
+    alignItems: "center",
+    justifyContent: "center",
   },
   offlineBarText: {
+    flex: 1,
     fontSize: 12,
     fontWeight: "600",
     color: "#92400E",
   },
   inputWrapOffline: {
-    borderColor: "#FDE68A",
     backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
   },
 });
