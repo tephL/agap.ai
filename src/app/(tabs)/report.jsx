@@ -48,7 +48,7 @@ function formatSentAt(ts) {
   });
 }
 
-function PingingCheckmark() {
+function PingingCheckmark({ size = 96 }) {
   const ringA = useRef(new Animated.Value(0)).current;
   const ringB = useRef(new Animated.Value(0)).current;
   const ringC = useRef(new Animated.Value(0)).current;
@@ -81,14 +81,19 @@ function PingingCheckmark() {
     return () => animations.forEach((animation) => animation.stop());
   }, [ringA, ringB, ringC]);
 
+  const circle = size * 0.56;
+
   return (
-    <View style={styles.successWrap}>
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       {[ringA, ringB, ringC].map((progress, index) => (
         <Animated.View
           key={index}
           style={[
             styles.pulse,
             {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
               opacity: progress.interpolate({
                 inputRange: [0, 0.12, 1],
                 outputRange: [0.5, 0.38, 0],
@@ -105,8 +110,13 @@ function PingingCheckmark() {
           ]}
         />
       ))}
-      <View style={styles.checkCircle}>
-        <Ionicons name="checkmark" size={36} color={colors.white} />
+      <View
+        style={[
+          styles.checkCircle,
+          { width: circle, height: circle, borderRadius: circle / 2 },
+        ]}
+      >
+        <Ionicons name="checkmark" size={circle * 0.5} color={colors.white} />
       </View>
     </View>
   );
@@ -171,11 +181,11 @@ export default function ReportScreen() {
   const atLimit = photos.length >= MAX_PHOTOS;
 
   const thumbSize = useMemo(() => {
-    const horizontalPad = 56;
-    const gap = 12;
+    const horizontalPad = 72;
+    const gap = 10;
     const visible = Math.min(photos.length + 1, MAX_PHOTOS);
     const available = width - horizontalPad;
-    return Math.min(108, Math.max(76, (available - gap * (visible - 1)) / visible));
+    return Math.min(80, Math.max(62, (available - gap * (visible - 1)) / visible));
   }, [photos.length, width]);
 
   const activeDot = Math.min(
@@ -460,25 +470,29 @@ export default function ReportScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Status header */}
-        <View style={styles.timeChip}>
-          <Ionicons name="time-outline" size={13} color={colors.muted} />
-          <Text style={styles.timeChipText}>Sent at {formatSentAt(sentAt)}</Text>
+        {/* Header: check on the left, text on the right */}
+        <View style={styles.header}>
+          <View style={styles.checkSlot}>
+            <PingingCheckmark size={88} />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>{isOnline ? "SOS SENT" : "SOS PENDING"}</Text>
+            <Text style={styles.subtitle}>
+              {isOnline
+                ? "Magdagdag ng detalye upang ikaw ay aming matulungan"
+                : "Pindutin ang Submit para ipadala ang SOS gamit ang text"}
+            </Text>
+            <View style={styles.timeChip}>
+              <Ionicons name="time-outline" size={12} color={colors.muted} />
+              <Text style={styles.timeChipText}>Sent at {formatSentAt(sentAt)}</Text>
+            </View>
+          </View>
         </View>
-
-        <PingingCheckmark />
-
-        <Text style={styles.title}>{isOnline ? "SOS SENT" : "SOS PENDING"}</Text>
-        <Text style={styles.subtitle}>
-          {isOnline
-            ? "Magdagdag ng detalye upang ikaw ay aming matulungan"
-            : "Pindutin ang Submit para ipadala ang SOS gamit ang text"}
-        </Text>
 
         {!isOnline && (
           <View style={styles.offlineNotice}>
             <View style={styles.offlineIconWrap}>
-              <Ionicons name="cloud-offline-outline" size={16} color={colors.white} />
+              <Ionicons name="cloud-offline-outline" size={14} color={colors.white} />
             </View>
             <Text style={styles.offlineNoticeText}>
               You&apos;re offline. We&apos;ll open a text message with your
@@ -490,9 +504,11 @@ export default function ReportScreen() {
         {/* Description card */}
         <View style={[styles.card, notesFocused && styles.cardFocused]}>
           <View style={styles.cardHeader}>
-            <Ionicons name="document-text-outline" size={16} color={colors.text} />
+            <Ionicons name="document-text-outline" size={15} color={colors.text} />
             <Text style={styles.cardLabel}>Description</Text>
-            <Text style={styles.cardHint}>{isOnline ? "Recommended" : "Optional"}</Text>
+            <Text style={styles.counter}>
+              {notes.length}/{descriptionMax}
+            </Text>
           </View>
 
           <TextInput
@@ -503,7 +519,7 @@ export default function ReportScreen() {
             onBlur={() => setNotesFocused(false)}
             placeholder={
               isOnline
-                ? "Describe your situation (number of people involved, injuries, hazards). This is crucial for first responders."
+                ? "Number of people involved, injuries, hazards. This is crucial for first responders."
                 : "Add a short description to include in the text"
             }
             placeholderTextColor={colors.placeholder}
@@ -512,16 +528,13 @@ export default function ReportScreen() {
             maxLength={descriptionMax}
             editable={!submitting}
           />
-          <Text style={styles.counter}>
-            {notes.length}/{descriptionMax}
-          </Text>
         </View>
 
         {/* Photos card */}
         {isOnline && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="images-outline" size={16} color={colors.text} />
+              <Ionicons name="images-outline" size={15} color={colors.text} />
               <Text style={styles.cardLabel}>Photos</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>
@@ -552,7 +565,7 @@ export default function ReportScreen() {
                 <View style={styles.cameraIconWrap}>
                   <Ionicons
                     name="camera-outline"
-                    size={28}
+                    size={24}
                     color={atLimit ? colors.muted : colors.primary}
                   />
                   <View
@@ -624,7 +637,7 @@ export default function ReportScreen() {
             <>
               <Ionicons
                 name={isOnline ? "send" : "chatbubble-ellipses"}
-                size={18}
+                size={17}
                 color={colors.white}
               />
               <Text style={styles.submitText}>
@@ -649,107 +662,110 @@ export default function ReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: colors.background, 
+    alignItems: "center"
+  },
   flex: { flex: 1 },
   content: {
+    flexGrow: 3, 
+    justifyContent: "center",
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 32,
+    paddingTop: 8,
+    paddingBottom: 16,
     alignItems: "center",
   },
 
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 12,
+  },
+  checkSlot: {
+    width: 104,
+    height: 104,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  headerText: { flex: 1, alignItems: "flex-start" },
+  title: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: colors.text,
+    letterSpacing: 0.8,
+  },
+  subtitle: {
+    marginTop: 2,
+    marginBottom: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.muted,
+  },
   timeChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: colors.surface,
   },
-  timeChipText: { fontSize: 12, fontWeight: "600", color: colors.muted },
+  timeChipText: { fontSize: 11, fontWeight: "600", color: colors.muted },
 
-  successWrap: {
-    width: 128,
-    height: 128,
-    marginTop: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   pulse: {
     position: "absolute",
-    width: 128,
-    height: 128,
-    borderRadius: 64,
     borderWidth: 3,
     borderColor: colors.primary,
   },
   checkCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: colors.primary,
     shadowOpacity: 0.4,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 8,
-  },
-
-  title: {
-    marginTop: 10,
-    fontSize: 30,
-    fontWeight: "900",
-    color: colors.text,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    marginTop: 6,
-    marginBottom: 22,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.muted,
-    textAlign: "center",
   },
 
   offlineNotice: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     width: "100%",
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 14,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
   offlineIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   offlineNoticeText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
     color: colors.text,
   },
 
   card: {
     width: "100%",
     backgroundColor: colors.white,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
-    marginBottom: 14,
+    padding: 12,
+    marginBottom: 10,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -760,58 +776,52 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 16,
   },
   cardLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "800",
     color: colors.text,
     letterSpacing: 0.3,
   },
-  cardHint: { fontSize: 11, fontWeight: "600", color: colors.muted },
   countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 2, 
     borderRadius: 999,
     backgroundColor: colors.surface,
   },
   countBadgeText: { fontSize: 11, fontWeight: "700", color: colors.text },
 
   notes: {
-    minHeight: 110,
-    borderRadius: 14,
+    minHeight: 120,
+    maxHeight: 200,
+    borderRadius: 12,
     backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.text,
   },
-  counter: {
-    alignSelf: "flex-end",
-    marginTop: 8,
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.muted,
-  },
+  counter: { fontSize: 11, fontWeight: "600", color: colors.muted },
 
-  gallery: { flexDirection: "row", alignItems: "center", gap: 12 },
+  gallery: { flexDirection: "row", alignItems: "center", gap: 10 },
   takePhoto: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: colors.primary,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
   },
   takePhotoDisabled: { opacity: 0.45, borderColor: colors.muted },
   cameraIconWrap: {
-    width: 36,
-    height: 32,
+    width: 32,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -831,7 +841,7 @@ const styles = StyleSheet.create({
   takePhotoLabelDisabled: { color: colors.muted },
 
   thumbWrap: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
     backgroundColor: colors.surface,
   },
@@ -839,8 +849,8 @@ const styles = StyleSheet.create({
   thumb: { width: "100%", height: "100%" },
   removeBtn: {
     position: "absolute",
-    top: 6,
-    right: 6,
+    top: 5,
+    right: 5,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -853,7 +863,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 6,
-    marginTop: 14,
+    marginTop: 10,
   },
   dot: {
     width: 6,
@@ -864,10 +874,10 @@ const styles = StyleSheet.create({
   dotActive: { width: 16, backgroundColor: colors.primary },
 
   submit: {
-    marginTop: 6,
+    marginTop: 4,
     width: "100%",
-    height: 54,
-    borderRadius: 27,
+    height: 50,
+    borderRadius: 25,
     flexDirection: "row",
     gap: 10,
     alignItems: "center",
@@ -886,6 +896,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     letterSpacing: 0.6,
   },
-  skipBtn: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 16 },
+  skipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
   skip: { fontSize: 14, fontWeight: "700", color: colors.muted },
 });
