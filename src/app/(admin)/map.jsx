@@ -26,7 +26,7 @@ const MAP_STYLE_URL = `https://api.maptiler.com/maps/dataviz/style.json?key=${MA
 
 const LOCATE_ZOOM = 15;
 const LOCATE_FLY_DURATION_MS = 1000;
-const CLUSTERS_FETCH_INTERVAL_MS = 1000 * 15; // 15 sec
+const CLUSTERS_FETCH_INTERVAL_MS = 1000 * 5; // 5 sec
 
 // radar-style pulse loop for cluster halos: ~18fps ticks, full cycle ~1s
 const PULSE_TICK_MS = 55;

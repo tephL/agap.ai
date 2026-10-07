@@ -175,6 +175,14 @@ const OFFLINE_PACK_RADIUS_KM = 5;
 const SELECTED_PERSON_FLY_ZOOM = 15;
 // Zoomed out just enough that the full 1.5 km halo ring stays on-screen.
 const DAM_FLY_ZOOM = 13.5;
+// Weather fills (storm signals, typhoon cone, rain regions) may be zoomed all
+// the way out to country level — never tighter than this.
+const WEATHER_MIN_ZOOM = 5;
+// Hazard layers (flood, landslide, ...) only get a little room to zoom out —
+// enough to see the surrounding area, never out to country level.
+const HAZARD_MIN_ZOOM = 12;
+// Flood layers are inspected street by street, so they barely zoom out at all.
+const FLOOD_MIN_ZOOM = 15;
 const SELECTED_PERSON_FLY_DURATION_MS = 1000;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PERSON_CARD_HEIGHT_ESTIMATE = SCREEN_HEIGHT * 0.4;
@@ -506,26 +514,28 @@ export default function Index() {
   // PAGASA TCWS storm signals overlay
   const [stormSignals, setStormSignals] = useState(null);
   const [stormSignalsError, setStormSignalsError] = useState(false);
-  const [stormLegendHidden, setStormLegendHidden] = useState(false);
+  // legends start as collapsed chips — nothing is expanded until the user
+  // taps a pill (see handleToggleLayer / handleChangeTab)
+  const [stormLegendHidden, setStormLegendHidden] = useState(true);
   const [selectedStormProvince, setSelectedStormProvince] = useState(null);
   const stormAutoFitDoneRef = useRef(false);
 
   // GDACS typhoon tracks overlay
   const [typhoons, setTyphoons] = useState(null);
   const [typhoonsError, setTyphoonsError] = useState(false);
-  const [typhoonLegendHidden, setTyphoonLegendHidden] = useState(false);
+  const [typhoonLegendHidden, setTyphoonLegendHidden] = useState(true);
   const [selectedTyphoon, setSelectedTyphoon] = useState(null);
 
   // Low pressure areas overlay
   const [lpas, setLpas] = useState(null);
   const [lpasError, setLpasError] = useState(false);
-  const [lpaLegendHidden, setLpaLegendHidden] = useState(false);
+  const [lpaLegendHidden, setLpaLegendHidden] = useState(true);
   const [selectedLpa, setSelectedLpa] = useState(null);
 
   // Weekly rain forecast overlay
   const [rainForecast, setRainForecast] = useState(null);
   const [rainError, setRainError] = useState(false);
-  const [rainLegendHidden, setRainLegendHidden] = useState(false);
+  const [rainLegendHidden, setRainLegendHidden] = useState(true);
   const [selectedRainRegion, setSelectedRainRegion] = useState(null);
 
   // fetch when toggled on; stale state is ignored while visibleLayers is off
@@ -897,20 +907,11 @@ export default function Index() {
     [router, activeId, resolveCurrentHazardVar]
   );
 
-  // legend visibility (persisted): expands whenever the active layer
-  // changes, otherwise restores what the user last chose
-  const [legendHidden, setLegendHiddenState] = useState(false);
-  const prevActiveLayerRef = useRef(activeId);
+  // legend visibility (persisted): a freshly-triggered layer shows the
+  // collapsed chip first; after that the panel just restores whatever the
+  // user last chose (never force-opens a card)
+  const [legendHidden, setLegendHiddenState] = useState(true);
   useEffect(() => {
-    const prev = prevActiveLayerRef.current;
-    prevActiveLayerRef.current = activeId;
-    if (prev !== null && activeId !== prev) {
-      // a different layer was picked — always re-show its legend
-      setLegendHiddenState(false);
-      setLegendHidden(false).catch(() => undefined);
-      return;
-    }
-    // same layer (or first mount) — restore the persisted choice
     getLegendHidden()
       .then(setLegendHiddenState)
       .catch(() => undefined);
@@ -922,6 +923,46 @@ export default function Index() {
       return !hidden;
     });
   }, []);
+
+  // Zoom floor for whatever is currently on the map.
+  const cameraMinZoom =
+    activeId != null
+      ? activeId.startsWith("flood_")
+        ? FLOOD_MIN_ZOOM
+        : HAZARD_MIN_ZOOM
+      : weatherOverlaysActive
+        ? WEATHER_MIN_ZOOM
+        : 6;
+
+  // The native minZoom preference is not always honoured by the pinch
+  // gesture, so re-apply the floor whenever the viewport settles below it.
+  const handleRegionDidChange = useCallback(
+    (event) => {
+      const zoom = event?.nativeEvent?.zoom;
+      if (typeof zoom === "number" && zoom < cameraMinZoom - 0.05) {
+        cameraRef.current?.zoomTo(cameraMinZoom, { duration: 250 });
+      }
+    },
+    [cameraMinZoom]
+  );
+
+  // Flood zones are read street by street: snap the camera down to street
+  // level as soon as a flood layer becomes active.
+  useEffect(() => {
+    if (!mapReady || !activeId?.startsWith("flood_")) return undefined;
+    let cancelled = false;
+    Promise.resolve(mapRef.current?.getZoom?.())
+      .then((zoom) => {
+        if (cancelled || typeof zoom !== "number" || zoom >= FLOOD_MIN_ZOOM) {
+          return;
+        }
+        cameraRef.current?.zoomTo(FLOOD_MIN_ZOOM, { duration: 600 });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, mapReady]);
 
   // staleness re-check clock
   const [now, setNow] = useState(Date.now());
@@ -1630,7 +1671,12 @@ export default function Index() {
         return;
       }
       if (!visibleLayers.typhoons) {
-        setVisibleLayers((prev) => ({ ...prev, typhoons: true, stormSignals: false }));
+        setVisibleLayers((prev) => ({
+          ...prev,
+          typhoons: true,
+          stormSignals: false,
+          rain: false,
+        }));
         setTyphoonLegendHidden(false);
         setStormLegendHidden(true);
       }
@@ -1669,6 +1715,7 @@ export default function Index() {
           lpas: true,
           stormSignals: false,
           typhoons: false,
+          rain: false,
         }));
         setLpaLegendHidden(false);
       }
@@ -1787,8 +1834,8 @@ export default function Index() {
   // Pressing any top-row pill raises the expanded toast for that tab. The
   // Weather pill auto-enables the storm-signals overlay (legend stays
   // collapsed); every other pill turns it off again. The inner overlays are
-  // mutually exclusive across tabs, though the layers panel can toggle them
-  // independently.
+  // mutually exclusive across tabs and in the layers panel alike — only one
+  // weather overlay is ever shown.
   const handleChangeTab = useCallback((key) => {
     setActiveTab(key);
     setSheetExpanded(true);
@@ -1851,7 +1898,23 @@ export default function Index() {
   }, [userProvinceName, userLocation]);
 
   const handleToggleLayer = useCallback((key) => {
-    setVisibleLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+    // Overlays are exclusive: switching one on switches the others off so the
+    // map never stacks two weather overlays. The LPA layer rides with the
+    // typhoons group (it has no row of its own), and dams is an unrelated
+    // base layer that stays as-is.
+    setVisibleLayers((prev) => {
+      const enabled = !prev[key];
+      const next = { ...prev, [key]: enabled };
+      if (enabled) {
+        for (const other of ["typhoons", "stormSignals", "rain", "lpas"]) {
+          if (other === key || (key === "typhoons" && other === "lpas")) continue;
+          next[other] = false;
+        }
+      } else if (key === "typhoons") {
+        next.lpas = false;
+      }
+      return next;
+    });
     // toggling a layer on does NOT auto-expand its legend chip — the user
     // opens a legend explicitly by tapping its pill. "Only one legend open at
     // a time" is enforced by each legend's onToggle handler in LegendStack.
@@ -1927,6 +1990,7 @@ export default function Index() {
         rotateEnabled={true}
         pitchEnabled={true}
         onDidFinishLoadingMap={() => setMapReady(true)}
+        onRegionDidChange={handleRegionDidChange}
       >
         <Camera
           ref={cameraRef}
@@ -1935,9 +1999,7 @@ export default function Index() {
             zoomLevel: 6,
           }}
           maxBounds={weatherOverlaysActive ? PAR_BOUNDS : PH_BOUNDS}
-          minZoom={weatherOverlaysActive
-            ? (activeId ? DAM_FLY_ZOOM : 4)
-            : (activeId ? DAM_FLY_ZOOM : 6)}
+          minZoom={cameraMinZoom}
           maxZoom={20}
           trackUserLocation={locationGranted ? "default" : undefined}
         />
@@ -1982,15 +2044,41 @@ export default function Index() {
                       5, '#cd00cd',
                       'rgba(0,0,0,0)',
                     ],
-                    'fill-opacity': 0.4,
+                    // eased in with zoom so provinces don't read as one flat
+                    // block when the map is pulled out
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.26, 7, 0.4, 11, 0.52],
                   }}
                 />
+                {/* soft signal-coloured glow hugging each signalled province */}
+                <Layer
+                  type="line"
+                  id="stormSignalsGlow"
+                  paint={{
+                    'line-color': [
+                      'match',
+                      ['get', 'signal'],
+                      1, '#00aaff',
+                      2, '#fff200',
+                      3, '#ffaa00',
+                      4, '#ff0000',
+                      5, '#cd00cd',
+                      'rgba(0,0,0,0)',
+                    ],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 3, 4, 11, 9],
+                    'line-blur': 4,
+                    'line-opacity': 0.35,
+                  }}
+                />
+                {/* crisp white casing on top keeps the borders legible over
+                    both the tinted fill and the basemap */}
                 <Layer
                   type="line"
                   id="stormSignalsLine"
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
-                    'line-color': 'rgba(255,255,255,0.8)',
-                    'line-width': 1,
+                    'line-color': 'rgba(255,255,255,0.92)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2, 11, 1.8],
+                    'line-opacity': 0.95,
                   }}
                 />
                 <Layer
@@ -2010,16 +2098,30 @@ export default function Index() {
                   }}
                 />
                 {selectedStormProvince && (
-                  <Layer
-                    type="line"
-                    id="stormSignalHighlight"
-                    filter={['==', ['get', 'name'], selectedStormProvince.name]}
-                    paint={{
-                      'line-color': '#111827',
-                      'line-width': 3,
-                      'line-opacity': 0.95,
-                    }}
-                  />
+                  <>
+                    <Layer
+                      type="line"
+                      id="stormSignalHighlightCasing"
+                      filter={['==', ['get', 'name'], selectedStormProvince.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': 'rgba(255,255,255,0.95)',
+                        'line-width': 6,
+                        'line-opacity': 0.9,
+                      }}
+                    />
+                    <Layer
+                      type="line"
+                      id="stormSignalHighlight"
+                      filter={['==', ['get', 'name'], selectedStormProvince.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': '#111827',
+                        'line-width': 2.5,
+                        'line-opacity': 0.95,
+                      }}
+                    />
+                  </>
                 )}
               </GeoJSONSource>
             )}
@@ -2043,8 +2145,20 @@ export default function Index() {
                   filter={['==', ['get', 'kind'], 'cone']}
                   paint={{
                     'fill-color': '#FACC15',
-                    'fill-opacity': 0.12,
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.08, 8, 0.16, 12, 0.22],
                     'fill-outline-color': '#CA8A04',
+                  }}
+                />
+                <Layer
+                  type="line"
+                  id="typhoonsConeEdge"
+                  filter={['==', ['get', 'kind'], 'cone']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': '#CA8A04',
+                    'line-width': 1.5,
+                    'line-dasharray': [3, 2.5],
+                    'line-opacity': 0.75,
                   }}
                 />
                 {/* wind footprint fills */}
@@ -2052,25 +2166,52 @@ export default function Index() {
                   type="fill"
                   id="typhoonsFootprintRed"
                   filter={['==', ['get', 'kind'], 'footprint_red']}
-                  paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#ef4444',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsFootprintOrange"
                   filter={['==', ['get', 'kind'], 'footprint_orange']}
-                  paint={{ 'fill-color': '#f97316', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#f97316',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsFootprintGreen"
                   filter={['==', ['get', 'kind'], 'footprint_green']}
-                  paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#22c55e',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsWindRadius"
                   filter={['==', ['get', 'kind'], 'windradius']}
-                  paint={{ 'fill-color': '#0EA5E9', 'fill-opacity': 0.08 }}
+                  paint={{
+                    'fill-color': '#0EA5E9',
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.06, 8, 0.1, 12, 0.14],
+                  }}
+                />
+                <Layer
+                  type="line"
+                  id="typhoonsWindRadiusEdge"
+                  filter={['==', ['get', 'kind'], 'windradius']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': '#0EA5E9',
+                    'line-width': 2,
+                    'line-opacity': 0.55,
+                    'line-blur': 1.5,
+                  }}
                 />
                 {/* impact halo: transparent fill + dashed intensity-colored ring */}
                 <Layer
@@ -2130,12 +2271,14 @@ export default function Index() {
                   type="line"
                   id="typhoonsForecastLineCasing"
                   filter={['==', ['get', 'segment'], 'forecast']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{ 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.55 }}
                 />
                 <Layer
                   type="line"
                   id="typhoonsForecastLine"
                   filter={['==', ['get', 'segment'], 'forecast']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
                     'line-color': '#0EA5E9',
                     'line-width': 2.5,
@@ -2147,12 +2290,14 @@ export default function Index() {
                   type="line"
                   id="typhoonsPastLineCasing"
                   filter={['==', ['get', 'segment'], 'past']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{ 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.55 }}
                 />
                 <Layer
                   type="line"
                   id="typhoonsPastLine"
                   filter={['==', ['get', 'segment'], 'past']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
                     'line-color': '#475569',
                     'line-width': 2.5,
@@ -2313,23 +2458,56 @@ export default function Index() {
                       ['<', ['get', 'rainMm'], 100], '#F59E0B',
                       '#DC2626',
                     ],
-                    'fill-opacity': 0.45,
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.3, 8, 0.45, 12, 0.55],
                   }}
                 />
-                {/* region borders */}
+                {/* region borders: faint dark casing keeps them readable over
+                    the pale "no rain" provinces, white core on top */}
+                <Layer
+                  type="line"
+                  id="rainRegionLineCasing"
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': 'rgba(15,23,42,0.16)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 8, 2.5, 12, 3.5],
+                  }}
+                />
                 <Layer
                   type="line"
                   id="rainRegionLine"
-                  paint={{ 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.9 }}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': 'rgba(255,255,255,0.95)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 8, 1.5, 12, 2.2],
+                    'line-opacity': 0.95,
+                  }}
                 />
                 {/* selected region highlight outline */}
                 {selectedRainRegion && (
-                  <Layer
-                    type="line"
-                    id="rainRegionHighlight"
-                    filter={['==', ['get', 'name'], selectedRainRegion.name]}
-                    paint={{ 'line-color': '#111827', 'line-width': 3, 'line-opacity': 0.9 }}
-                  />
+                  <>
+                    <Layer
+                      type="line"
+                      id="rainRegionHighlightCasing"
+                      filter={['==', ['get', 'name'], selectedRainRegion.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': 'rgba(255,255,255,0.95)',
+                        'line-width': 6,
+                        'line-opacity': 0.9,
+                      }}
+                    />
+                    <Layer
+                      type="line"
+                      id="rainRegionHighlight"
+                      filter={['==', ['get', 'name'], selectedRainRegion.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': '#111827',
+                        'line-width': 2.5,
+                        'line-opacity': 0.95,
+                      }}
+                    />
+                  </>
                 )}
               </GeoJSONSource>
             )}
@@ -2620,17 +2798,6 @@ export default function Index() {
           <HazardLayerOverlay key={activeId} layerId={activeId} />
         )}
       </Map>
-
-      <TouchableOpacity
-        style={styles.hazardsButton}
-        onPress={handleHazardsPress}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Open hazards drawer"
-      >
-        <Ionicons name="warning-outline" size={18} color="#E32F31" />
-        <Text style={styles.hazardsButtonText}>Monitor</Text>
-      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.locateButton}
@@ -3013,29 +3180,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#208AEF',
     borderWidth: 2,
     borderColor: '#ffffff',
-  },
-  // Red pill, bottom-left — opens the hazards drawer (dam statuses).
-  hazardsButton: {
-    position: 'absolute',
-    left: 16,
-    bottom: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 48,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  hazardsButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#E32F31',
   },
   locateButtonIcon: {
     fontSize: 22,

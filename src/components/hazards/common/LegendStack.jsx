@@ -16,11 +16,11 @@ const styles = StyleSheet.create({
   stack: {
     position: "absolute",
     left: 16,
-    // sits above the bottom-left "Monitor" pill (which is 48px tall at
-    // bottom:34 → top ≈ 82) so the legend pills never overlap it
-    bottom: 96,
+    // shares a baseline with the bottom-right locate button (bottom:32), so
+    // the legend pills and the map buttons read as one row of chrome
+    bottom: 34,
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
     zIndex: 15,
     elevation: 15,
   },

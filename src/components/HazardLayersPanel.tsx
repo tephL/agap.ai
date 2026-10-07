@@ -1,17 +1,17 @@
 import React from "react";
 import {
+  Animated,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import HAZARD_COLORS from "@/constants/hazardColors";
+import HAZARD_COLORS, { HAZARD_LEGENDS } from "@/constants/hazardColors";
 import { HAZARD_LAYERS, type HazardLayerConfig } from "@/lib/pmtiles/downloadLayer";
 import { MAP_LAYERS } from "@/components/hazards/common/layerRegistry";
 import { useOfflinePMTilesLayer } from "@/hooks/useOfflinePMTilesLayer";
@@ -20,7 +20,7 @@ import { useOfflinePMTilesLayer } from "@/hooks/useOfflinePMTilesLayer";
  * Bottom-sheet "layers" panel with two tabs:
  *   - Hazards: pick which single hazard layer is overlaid on the map and
  *     manage offline copies (download / remove). Only one renders at a time.
- *   - Map layers: toggleable map features (dams, fault lines, ...).
+ *   - Map layers: toggleable map features (typhoons, storm signals, rain).
  *
  * Per-layer download state is independent of selection, so every row keeps
  * working (download/resume/remove) whether selected or not.
@@ -50,6 +50,11 @@ function LayerRow({ config, active, onSelect, onAskAI }: LayerRowProps) {
   const { status, progress, download, remove } =
     useOfflinePMTilesLayer(config.id);
   const palette = HAZARD_COLORS[config.hazardType];
+  // Badge shows the layer's own legend ramp (flood = 3 steps, others = one).
+  const swatchColors = (HAZARD_LEGENDS[config.hazardType] ?? []).map(
+    (item) => item.color
+  );
+  const swatches = swatchColors.length > 0 ? swatchColors : [palette.fill];
 
   // Download status stays visible even when unselected so an in-flight
   // offline copy isn't orphaned silently in the background.
@@ -61,77 +66,128 @@ function LayerRow({ config, active, onSelect, onAskAI }: LayerRowProps) {
         : status === "error"
           ? `~${config.approxSizeMB} MB · nabigo ang download`
           : `~${config.approxSizeMB} MB · nag-stream`;
+  const metaColor =
+    status === "error" ? "#DC2626" : status === "ready" ? "#16A34A" : "#6B7280";
 
   return (
-    <View style={styles.row}>
-      <TouchableOpacity
-        style={styles.rowMain}
-        onPress={onSelect}
-        activeOpacity={0.6}
-      >
-        <Ionicons
-          name={active ? "radio-button-on" : "radio-button-off"}
-          size={22}
-          color={active ? "#208AEF" : "#9CA3AF"}
-        />
-        <View style={[styles.dot, { backgroundColor: palette.stroke }]} />
-        <View style={styles.info}>
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onSelect}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={config.label}
+      style={[
+        styles.card,
+        {
+          backgroundColor: "#FFFFFF",
+          borderColor: active
+            ? withAlpha(palette.stroke, 0.4)
+            : "rgba(15,23,42,0.08)",
+          shadowOpacity: active ? 0.14 : 0.06,
+          elevation: active ? 6 : 2,
+        },
+      ]}
+    >
+      <View style={styles.swatchBadge}>
+        {swatches.map((color, index) => (
+          <View
+            key={`${color}-${index}`}
+            style={[styles.swatchBar, { backgroundColor: color }]}
+          />
+        ))}
+      </View>
+
+      <View style={styles.cardInfo}>
+        <View style={styles.labelRow}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.cardLabel,
+              { color: active ? "#111827" : "#374151", flexShrink: 1 },
+            ]}
+          >
+            {config.label}
+          </Text>
           {config.recommended ? (
-            <View style={[styles.badge, active && styles.badgeActive]}>
-              <Text
-                style={[
-                  styles.badgeText,
-                  active && styles.badgeTextActive,
-                ]}
-              >
+            <View
+              style={[styles.pill, active && { backgroundColor: palette.stroke }]}
+            >
+              <Text style={[styles.pillText, active && styles.pillTextActive]}>
                 Inirerekomenda
               </Text>
             </View>
           ) : null}
-          <Text style={[styles.label, !active && styles.labelDisabled]}>
-            {config.label}
+        </View>
+        {LAYER_DESCRIPTIONS[config.id] ? (
+          <Text style={styles.cardDescription}>
+            {LAYER_DESCRIPTIONS[config.id]}
           </Text>
-          {LAYER_DESCRIPTIONS[config.id] ? (
-            <Text style={styles.description}>
-              {LAYER_DESCRIPTIONS[config.id]}
-            </Text>
-          ) : null}
-          <Text style={styles.meta}>{metaText}</Text>
-          {status === "downloading" ? (
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.trackFill,
-                  { width: `${Math.max(progress, 4)}%` },
-                ]}
+        ) : null}
+        <Text style={[styles.meta, { color: metaColor }]}>{metaText}</Text>
+        {status === "downloading" ? (
+          <View style={styles.track}>
+            <View
+              style={[
+                styles.trackFill,
+                {
+                  width: `${Math.max(progress, 4)}%`,
+                  backgroundColor: palette.stroke,
+                },
+              ]}
+            />
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.rowActions}>
+        <View
+          style={[
+            styles.checkCircle,
+            active && {
+              backgroundColor: palette.stroke,
+              borderColor: palette.stroke,
+            },
+          ]}
+        >
+          {active ? <Ionicons name="checkmark" size={13} color="#FFFFFF" /> : null}
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => onAskAI(config.id)}
+            hitSlop={8}
+            accessibilityLabel={`Tanong sa AI tungkol sa ${config.label}`}
+          >
+            <Ionicons name="help" size={14} color="#6B7280" />
+          </TouchableOpacity>
+
+          {status === "ready" ? (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={remove}
+              hitSlop={8}
+              accessibilityLabel="Alisin ang offline copy"
+            >
+              <Ionicons name="trash-outline" size={15} color="#EF4444" />
+            </TouchableOpacity>
+          ) : status === "not-downloaded" || status === "error" ? (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={download}
+              hitSlop={8}
+              accessibilityLabel="I-download para sa offline"
+            >
+              <Ionicons
+                name="cloud-download-outline"
+                size={15}
+                color={status === "error" ? "#DC2626" : "#208AEF"}
               />
-            </View>
+            </TouchableOpacity>
           ) : null}
         </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.helpButton}
-        onPress={() => onAskAI(config.id)}
-        hitSlop={8}
-      >
-        <Ionicons name="help" size={14} color="#6B7280" />
-      </TouchableOpacity>
-
-      {status === "ready" ? (
-        <TouchableOpacity style={styles.actionButton} onPress={remove}>
-          <Ionicons name="trash-outline" size={16} color="#EF4444" />
-        </TouchableOpacity>
-      ) : status === "not-downloaded" || status === "error" ? (
-        <TouchableOpacity style={styles.actionButton} onPress={download}>
-          <Ionicons
-            name="cloud-download-outline"
-            size={16}
-            color={status === "error" ? "#DC2626" : "#208AEF"}
-          />
-        </TouchableOpacity>
-      ) : null}
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -141,6 +197,65 @@ interface MapLayerRowConfig {
   label: string;
   activeColor?: string;
   description?: string;
+  icon?: string;
+}
+
+const TRACK_WIDTH = 46;
+const THUMB_SIZE = 22;
+// travel = track width minus thumb, the 3px padding and the 1.5px border on
+// each side (the border only shows while the switch is off)
+const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 9;
+
+/** #rgb / #rrggbb -> rgba() so a layer's accent can be tinted softly. */
+function withAlpha(hex: string, alpha: number): string {
+  const raw = hex.replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const value = parseInt(full, 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${
+    value & 255
+  }, ${alpha})`;
+}
+
+/** Slim pill switch — thumb slides with the layer's accent colour. */
+function LayerToggle({ visible, color }: { visible: boolean; color: string }) {
+  // lazy state keeps one stable Animated.Value for the component's lifetime
+  // without reading a ref during render
+  const [progress] = React.useState(() => new Animated.Value(visible ? 1 : 0));
+
+  React.useEffect(() => {
+    Animated.timing(progress, {
+      toValue: visible ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [visible, progress]);
+
+  const thumbX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, THUMB_TRAVEL],
+  });
+
+  return (
+    <View
+      style={[
+        styles.toggleTrack,
+        {
+          backgroundColor: visible ? color : "#FFFFFF",
+          borderColor: visible ? color : "#D1D5DB",
+        },
+      ]}
+    >
+      <Animated.View
+        style={[styles.toggleThumb, { transform: [{ translateX: thumbX }] }]}
+      />
+    </View>
+  );
 }
 
 function MapLayerRow({
@@ -152,26 +267,34 @@ function MapLayerRow({
   visible: boolean;
   onToggle: () => void;
 }) {
+  const color = config.activeColor ?? "#9CA3AF";
+  const iconName = (config.icon ??
+    "layers-outline") as React.ComponentProps<typeof Ionicons>["name"];
+
   return (
-    <View style={styles.row}>
-      <View style={styles.rowMain}>
-        <View
-          style={[styles.dot, { backgroundColor: config.activeColor ?? "#9CA3AF" }]}
-        />
-        <View style={styles.info}>
-          <Text style={styles.label}>{config.label}</Text>
-          {config.description ? (
-            <Text style={styles.description}>{config.description}</Text>
-          ) : null}
-        </View>
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onToggle}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: visible }}
+      accessibilityLabel={config.label}
+      style={styles.card}
+    >
+      <View style={[styles.cardBadge, { backgroundColor: withAlpha(color, 0.14) }]}>
+        <Ionicons name={iconName} size={21} color={color} />
       </View>
-      <Switch
-        value={visible}
-        onValueChange={onToggle}
-        trackColor={{ false: "#E5E7EB", true: "#208AEF" }}
-        thumbColor="#FFFFFF"
-      />
-    </View>
+
+      <View style={styles.cardInfo}>
+        <Text style={[styles.cardLabel, { color: "#111827" }]}>
+          {config.label}
+        </Text>
+        {config.description ? (
+          <Text style={styles.cardDescription}>{config.description}</Text>
+        ) : null}
+      </View>
+
+      <LayerToggle visible={visible} color={color} />
+    </TouchableOpacity>
   );
 }
 
@@ -201,7 +324,15 @@ export default function HazardLayersPanel({
   visibleLayers,
   onToggleLayer,
 }: HazardLayersPanelProps) {
-  const [tab, setTab] = React.useState<PanelTab>("hazards");
+  const [tab, setTab] = React.useState<PanelTab>("map");
+  // The floating layers button always lands on the "Map layers" tab. Adjusted
+  // during render (React's documented derived-state-from-props pattern)
+  // instead of in an effect.
+  const [wasOpen, setWasOpen] = React.useState(visible);
+  if (visible !== wasOpen) {
+    setWasOpen(visible);
+    if (visible) setTab("map");
+  }
   if (!visible) return null;
 
   return (
@@ -252,32 +383,41 @@ export default function HazardLayersPanel({
                 nestedScrollEnabled
                 showsVerticalScrollIndicator
               >
-                {HAZARD_LAYERS.map((layer) => (
-                  <LayerRow
-                    key={layer.id}
-                    config={layer}
-                    active={activeId === layer.id}
-                    onSelect={() =>
-                      onSelect(activeId === layer.id ? null : layer.id)
-                    }
-                    onAskAI={onAskAI}
-                  />
-                ))}
+                <View style={styles.cardList}>
+                  {HAZARD_LAYERS.map((layer) => (
+                    <LayerRow
+                      key={layer.id}
+                      config={layer}
+                      active={activeId === layer.id}
+                      onSelect={() =>
+                        onSelect(activeId === layer.id ? null : layer.id)
+                      }
+                      onAskAI={onAskAI}
+                    />
+                  ))}
+                </View>
               </ScrollView>
             </>
           ) : (
-            <ScrollView style={styles.list} nestedScrollEnabled>
-              <Text style={styles.subtitle}>
-                Choose which map features are shown. Toggles apply instantly.
-              </Text>
-              {(MAP_LAYERS ?? []).map((layer) => (
-                <MapLayerRow
-                  key={layer.key}
-                  config={layer}
-                  visible={visibleLayers?.[layer.key] ?? false}
-                  onToggle={() => onToggleLayer?.(layer.key)}
-                />
-              ))}
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.mapListContent}
+              nestedScrollEnabled
+            >
+                <Text style={styles.subtitle}>
+                  Only one map overlay at a time — turning one on turns the
+                  others off.
+                </Text>
+              <View style={styles.cardList}>
+                {(MAP_LAYERS ?? []).map((layer) => (
+                  <MapLayerRow
+                    key={layer.key}
+                    config={layer}
+                    visible={visibleLayers?.[layer.key] ?? false}
+                    onToggle={() => onToggleLayer?.(layer.key)}
+                  />
+                ))}
+              </View>
             </ScrollView>
           )}
         </Pressable>
@@ -342,36 +482,94 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 8,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
+  mapListContent: {
+    paddingBottom: 8,
   },
-  rowMain: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
+  cardList: {
     gap: 10,
   },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  info: { flex: 1 },
-  label: { fontSize: 14, fontWeight: "600", color: "#111827" },
-  labelDisabled: { color: "#9CA3AF" },
-  description: { fontSize: 11, color: "#6B7280", marginTop: 2 },
-  badge: {
-    alignSelf: "flex-start",
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    backgroundColor: "#FFFFFF",
+    borderColor: "rgba(15,23,42,0.08)",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  cardDescription: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  toggleTrack: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 3,
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  swatchBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    overflow: "hidden",
+    flexDirection: "row",
+    backgroundColor: "#E5E7EB",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  swatchBar: { flex: 1 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  pill: {
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
     backgroundColor: "#EFF6FF",
-    marginBottom: 2,
   },
-  badgeActive: { backgroundColor: "#208AEF" },
-  badgeText: { fontSize: 9, fontWeight: "700", color: "#208AEF" },
-  badgeTextActive: { color: "#FFFFFF" },
-  meta: { fontSize: 11, color: "#6B7280", marginTop: 1 },
+  pillText: { fontSize: 9, fontWeight: "700", color: "#208AEF" },
+  pillTextActive: { color: "#FFFFFF" },
+  meta: { fontSize: 11, color: "#6B7280", marginTop: 3 },
   track: {
     height: 4,
     marginTop: 6,
@@ -380,22 +578,32 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   trackFill: { height: "100%", backgroundColor: "#208AEF" },
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F3F4F6",
+  rowActions: {
+    alignItems: "flex-end",
+    gap: 8,
   },
-  helpButton: {
+  actionRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  iconButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3F4F6",
-    marginLeft: 6,
-    marginRight: 7
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  checkCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
 });

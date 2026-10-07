@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { INTENSITY_COLORS } from "@/lib/typhoonTracks/trackJson";
+import { legendStyles } from "@/components/hazards/common/legendTheme";
 
 const INTENSITY_ROWS = [
   { key: "superTyphoon", label: "Super Typhoon", marker: "STY" },
@@ -15,79 +16,91 @@ const INTENSITY_ROWS = [
 
 const CONE_COLOR = "#FACC15";
 const CONE_COLOR_EDGE = "#CA8A04";
+const ACCENT = "#0EA5E9";
 
 /**
- * Bottom-right legend for the Typhoons track overlay. Collapses into a compact
+ * Bottom-left legend for the Typhoons track overlay. Collapses into a compact
  * chip when hidden. Rendered only while the Typhoons layer is toggled on.
  */
 export default function TyphoonLegend({ hidden = false, onToggle }) {
   if (hidden) {
     return (
-      <View style={styles.wrapper}>
+      <View style={legendStyles.wrapper}>
         <TouchableOpacity
-          style={styles.chip}
+          style={legendStyles.chip}
           onPress={onToggle}
           activeOpacity={0.7}
           accessibilityLabel="Ipakita ang typhoons legend"
           hitSlop={8}
         >
-          <Text style={styles.chipText}>Typhoons</Text>
+          <View style={[legendStyles.chipDot, { backgroundColor: ACCENT }]} />
+          <Text style={legendStyles.chipText}>Typhoons</Text>
+          <Ionicons name="chevron-up" size={14} color="#64748B" />
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Typhoon Tracks</Text>
+    <View style={legendStyles.wrapper}>
+      <View style={[legendStyles.card, styles.card]}>
+        <View style={legendStyles.header}>
+          <View style={legendStyles.titleRow}>
+            <View
+              style={[legendStyles.titleDot, { backgroundColor: ACCENT }]}
+            />
+            <Text style={legendStyles.title}>Typhoon Tracks</Text>
+          </View>
           <TouchableOpacity
             onPress={onToggle}
             hitSlop={8}
-            style={styles.collapseButton}
+            style={legendStyles.collapseButton}
             accessibilityLabel="Itago ang typhoons legend"
           >
-            <Ionicons name="chevron-down" size={16} color="#6B7280" />
+            <Ionicons name="chevron-down" size={14} color="#64748B" />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.headerSmall}>Track</Text>
-        <View style={styles.row}>
+        <Text style={legendStyles.sectionLabel}>Track</Text>
+        <View style={legendStyles.row}>
           <View style={[styles.lineSwatch, styles.pastLine]} />
-          <Text style={styles.rowText}>Past track</Text>
+          <Text style={legendStyles.rowText}>Past track</Text>
         </View>
-        <View style={styles.row}>
+        <View style={legendStyles.row}>
           <View style={[styles.lineSwatch, styles.forecastLine]} />
-          <Text style={styles.rowText}>Forecast path</Text>
+          <Text style={legendStyles.rowText}>Forecast path</Text>
         </View>
 
-        <Text style={styles.headerSmall}>Uncertainty</Text>
-        <View style={styles.row}>
-          <View style={[styles.swatch, styles.coneSwatch]} />
-          <Text style={styles.rowText}>Cone of uncertainty</Text>
+        <Text style={legendStyles.sectionLabel}>Uncertainty</Text>
+        <View style={legendStyles.row}>
+          <View style={[legendStyles.swatch, styles.coneSwatch]} />
+          <Text style={legendStyles.rowText}>Cone of uncertainty</Text>
         </View>
 
-        <Text style={styles.headerSmall}>Current position</Text>
-        <View style={styles.row}>
+        <Text style={legendStyles.sectionLabel}>Current position</Text>
+        <View style={legendStyles.row}>
           <View style={styles.eyeStack}>
-            <View style={[styles.swatch, styles.impactSwatch]} />
+            <View style={styles.impactSwatch} />
             <View style={styles.eyeRing} />
             <View style={styles.eyeDot} />
           </View>
-          <Text style={styles.rowText}>
+          <Text style={legendStyles.rowText}>
             <Text style={styles.rowTextStrong}>Eye</Text> = current center,
             inside the impact halo (storm size)
           </Text>
         </View>
-        <View style={styles.row}>
-          <View style={[styles.badgeText]}><Text style={styles.badgeLabel}>12H</Text></View>
-          <Text style={styles.rowText}>Forecast positions (24H, 36H, …)</Text>
+        <View style={legendStyles.row}>
+          <View style={styles.badgeText}>
+            <Text style={styles.badgeLabel}>12H</Text>
+          </View>
+          <Text style={legendStyles.rowText}>
+            Forecast positions (24H, 36H, …)
+          </Text>
         </View>
 
-        <Text style={styles.headerSmall}>Intensity</Text>
+        <Text style={legendStyles.sectionLabel}>Intensity</Text>
         {INTENSITY_ROWS.map(({ key, label, marker }) => (
-          <View key={key} style={styles.row}>
+          <View key={key} style={legendStyles.row}>
             <View
               style={[
                 styles.markerBadge,
@@ -103,7 +116,7 @@ export default function TyphoonLegend({ hidden = false, onToggle }) {
                 {marker}
               </Text>
             </View>
-            <Text style={styles.rowText}>{label}</Text>
+            <Text style={legendStyles.rowText}>{label}</Text>
           </View>
         ))}
       </View>
@@ -112,109 +125,26 @@ export default function TyphoonLegend({ hidden = false, onToggle }) {
 }
 
 const styles = StyleSheet.create({
-  // NOT absolute: this legend stacks vertically inside LegendStack.
-  wrapper: {
-    alignItems: "flex-start",
-  },
-  chip: {
-    minWidth: 128,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.08)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    textAlign: "center",
-    includeFontPadding: false,
-  },
+  // the track card carries more rows, so it is slightly wider
   card: {
-    width: 250,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.08)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-    paddingBottom: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
-  },
-  title: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-    marginRight: 8,
-    includeFontPadding: false,
-  },
-  collapseButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F3F4F6",
-    flexShrink: 0,
-  },
-  headerSmall: {
-    marginTop: 8,
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#9AA2B1",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  swatch: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 10,
-    flexShrink: 0,
-  },
-  coneSwatch: {
-    backgroundColor: CONE_COLOR,
-    borderWidth: 1,
-    borderColor: CONE_COLOR_EDGE,
-    opacity: 0.9,
+    width: 252,
   },
   lineSwatch: {
     width: 22,
     height: 3,
     borderRadius: 2,
-    marginRight: 10,
+    flexShrink: 0,
   },
   pastLine: {
     backgroundColor: "#475569",
   },
   forecastLine: {
     backgroundColor: "#0EA5E9",
+  },
+  coneSwatch: {
+    backgroundColor: CONE_COLOR,
+    borderColor: CONE_COLOR_EDGE,
+    opacity: 0.9,
   },
   impactSwatch: {
     position: "absolute",
@@ -232,7 +162,6 @@ const styles = StyleSheet.create({
     height: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
     flexShrink: 0,
   },
   eyeRing: {
@@ -257,7 +186,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     minWidth: 30,
-    marginRight: 10,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 6,
@@ -277,7 +205,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    marginRight: 10,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -286,13 +213,6 @@ const styles = StyleSheet.create({
   markerLetter: {
     fontSize: 9,
     fontWeight: "700",
-    includeFontPadding: false,
-  },
-  rowText: {
-    flexShrink: 1,
-    fontSize: 12,
-    lineHeight: 16,
-    color: "#374151",
     includeFontPadding: false,
   },
   rowTextStrong: {

@@ -1,49 +1,28 @@
 // Registry of toggleable map feature layers, shown in the layers panel's
-// "Map layers" tab. Adding a future category (volcanoes, fault lines,
-// typhoons, weather bulletins) means appending an entry here and rendering
+// "Map layers" tab. Adding a future category (weather bulletins, ...)
+// means appending an entry here and rendering
 // its map layers behind the matching visibleLayers key — no other plumbing
 // required. (Named MAP_LAYERS to avoid clashing with the PMTiles HAZARD_LAYERS
 // in lib/pmtiles/downloadLayer.)
 export const MAP_LAYERS = [
   {
-    key: "dams",
-    label: "Dams",
-    activeColor: "#4287f5",
-    description: "PAGASA-monitored dam statuses and spill alerts",
-  },
-  {
-    key: "faultLines",
-    label: "Fault Lines",
-    activeColor: "#8B5CF6",
-    description: "PHIVOLCS active fault traces",
-  },
-  {
-    key: "volcanoes",
-    label: "Volcanoes",
-    activeColor: "#E0592A",
-    description: "Monitored volcanoes and danger zones",
-  },
-  {
     key: "typhoons",
     label: "Typhoons",
+    icon: "thunderstorm-outline",
     activeColor: "#0EA5E9",
     description: "Active typhoon tracks and public warnings",
   },
   {
     key: "stormSignals",
     label: "Storm Signals",
+    icon: "warning-outline",
     activeColor: "#E32F31",
     description: "Bagyong dala-distribute: PAGASA TCWS signal per probinsya",
   },
   {
-    key: "lpas",
-    label: "Low Pressure Area",
-    activeColor: "#0EA5E9",
-    description: "Low pressure areas shown as hollow circles",
-  },
-  {
     key: "rain",
     label: "Rain Forecast",
+    icon: "rainy-outline",
     activeColor: "#3B82F6",
     description: "Weekly rainfall forecast per region",
   },
