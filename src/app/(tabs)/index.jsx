@@ -178,6 +178,11 @@ const DAM_FLY_ZOOM = 13.5;
 // Weather fills (storm signals, typhoon cone, rain regions) may be zoomed all
 // the way out to country level — never tighter than this.
 const WEATHER_MIN_ZOOM = 5;
+// Hazard layers (flood, landslide, ...) only get a little room to zoom out —
+// enough to see the surrounding area, never out to country level.
+const HAZARD_MIN_ZOOM = 12;
+// Flood layers are inspected street by street, so they barely zoom out at all.
+const FLOOD_MIN_ZOOM = 15;
 const SELECTED_PERSON_FLY_DURATION_MS = 1000;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PERSON_CARD_HEIGHT_ESTIMATE = SCREEN_HEIGHT * 0.4;
@@ -918,6 +923,46 @@ export default function Index() {
       return !hidden;
     });
   }, []);
+
+  // Zoom floor for whatever is currently on the map.
+  const cameraMinZoom =
+    activeId != null
+      ? activeId.startsWith("flood_")
+        ? FLOOD_MIN_ZOOM
+        : HAZARD_MIN_ZOOM
+      : weatherOverlaysActive
+        ? WEATHER_MIN_ZOOM
+        : 6;
+
+  // The native minZoom preference is not always honoured by the pinch
+  // gesture, so re-apply the floor whenever the viewport settles below it.
+  const handleRegionDidChange = useCallback(
+    (event) => {
+      const zoom = event?.nativeEvent?.zoom;
+      if (typeof zoom === "number" && zoom < cameraMinZoom - 0.05) {
+        cameraRef.current?.zoomTo(cameraMinZoom, { duration: 250 });
+      }
+    },
+    [cameraMinZoom]
+  );
+
+  // Flood zones are read street by street: snap the camera down to street
+  // level as soon as a flood layer becomes active.
+  useEffect(() => {
+    if (!mapReady || !activeId?.startsWith("flood_")) return undefined;
+    let cancelled = false;
+    Promise.resolve(mapRef.current?.getZoom?.())
+      .then((zoom) => {
+        if (cancelled || typeof zoom !== "number" || zoom >= FLOOD_MIN_ZOOM) {
+          return;
+        }
+        cameraRef.current?.zoomTo(FLOOD_MIN_ZOOM, { duration: 600 });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, mapReady]);
 
   // staleness re-check clock
   const [now, setNow] = useState(Date.now());
@@ -1945,6 +1990,7 @@ export default function Index() {
         rotateEnabled={true}
         pitchEnabled={true}
         onDidFinishLoadingMap={() => setMapReady(true)}
+        onRegionDidChange={handleRegionDidChange}
       >
         <Camera
           ref={cameraRef}
@@ -1953,9 +1999,7 @@ export default function Index() {
             zoomLevel: 6,
           }}
           maxBounds={weatherOverlaysActive ? PAR_BOUNDS : PH_BOUNDS}
-          minZoom={weatherOverlaysActive
-            ? (activeId ? DAM_FLY_ZOOM : WEATHER_MIN_ZOOM)
-            : (activeId ? DAM_FLY_ZOOM : 6)}
+          minZoom={cameraMinZoom}
           maxZoom={20}
           trackUserLocation={locationGranted ? "default" : undefined}
         />
