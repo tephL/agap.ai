@@ -69,7 +69,7 @@ export default function TyphoonAlertBanner({ typhoon, onDismiss, onViewDetails, 
   ].filter(Boolean);
 
   return (
-    <View style={styles.container}>
+    <View>
       <View style={styles.card}>
         <View style={styles.accent} />
 
@@ -178,13 +178,6 @@ export default function TyphoonAlertBanner({ typhoon, onDismiss, onViewDetails, 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    top: 30,
-    left: 12,
-    right: 12,
-    zIndex: 25,
-  },
   card: {
     flexDirection: "row",
     backgroundColor: colors.white,

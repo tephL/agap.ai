@@ -216,11 +216,6 @@ function DispatchCard({ dispatch, ringOpacity, ringScale }) {
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 35,
-    left: 12,
-    right: 12,
-    zIndex: 20,
     gap: 10,
   },
   card: {

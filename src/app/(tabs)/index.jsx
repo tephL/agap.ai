@@ -205,6 +205,10 @@ const DAM_PULSE_PERIODS = { normal: 3500, caution: 2000, danger: 1100 };
 const ROUTE_FIT_PADDING = { top: 120, right: 80, bottom: 320, left: 80 };
 // Stable empty array so prop identity stays consistent across renders.
 const EMPTY_SLUGS = [];
+// Vertical gap between the stacked map notification banners.
+const NOTIF_GAP = 12;
+// Top offset of the notification stack (below the status bar area).
+const NOTIF_STACK_TOP = 35;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -319,14 +323,7 @@ export default function Index() {
   const [activeTyphoon, setActiveTyphoon] = useState(null);
   const [typhoonDismissed, setTyphoonDismissed] = useState(false);
 
-  // NOTIF
-  const NOTIF_GAP = 12;
-  const TYPHOON_BANNER_FALLBACK_HEIGHT = 230;
-  const [typhoonBannerHeight, setTyphoonBannerHeight] = useState(0);
   const typhoonBannerVisible = !typhoonDismissed && !!activeTyphoon;
-  const dispatchBarTop = typhoonBannerVisible
-  ? Math.max(typhoonBannerHeight, TYPHOON_BANNER_FALLBACK_HEIGHT) + NOTIF_GAP
-  : 35;
 
   // "Report received" overlay shown after returning from the report form.
   // The sosStatus/reportId params are consumed exactly once (guarded by the
@@ -2845,38 +2842,33 @@ export default function Index() {
         />
       )}
 
-    {typhoonBannerVisible && (
-      <View
-        pointerEvents="box-none"
-        style={styles.typhoonBannerWrap}
-        onLayout={(e) => setTyphoonBannerHeight(e.nativeEvent.layout.height)}
-      >
-        <TyphoonAlertBanner
-          typhoon={activeTyphoon}
-          onDismiss={handleTyphoonDismiss}
-          onViewDetails={handleTyphoonViewDetails}
-          onAskPreparedness={handleTyphoonAskPreparedness}
-        />
-      </View>
-    )}
+      {(typhoonBannerVisible ||
+        dispatches.length > 0 ||
+        cancelledDispatches.length > 0 ||
+        showReportBar) && (
+        <View pointerEvents="box-none" style={styles.notifStack}>
+          {typhoonBannerVisible && (
+            <TyphoonAlertBanner
+              typhoon={activeTyphoon}
+              onDismiss={handleTyphoonDismiss}
+              onViewDetails={handleTyphoonViewDetails}
+              onAskPreparedness={handleTyphoonAskPreparedness}
+            />
+          )}
 
-    <DispatchNotificationBar
-      dispatches={dispatches}
-      cancelledDispatches={cancelledDispatches}
-      style={
-        typhoonBannerVisible
-          ? { top: typhoonBannerHeight + NOTIF_GAP }
-          : undefined
-      }
-    />
+          <DispatchNotificationBar
+            dispatches={dispatches}
+            cancelledDispatches={cancelledDispatches}
+          />
 
-      {showReportBar && (
-        <ReportSubmittedBar
-          report={{ reportId: activeReport.reportId }}
-          onViewDetails={handleReportViewDetails}
-          onCancel={handleReportCancel}
-          style={{ top: dispatches.length > 0 ? 300 : 35 }}
-        />
+          {showReportBar && (
+            <ReportSubmittedBar
+              report={{ reportId: activeReport.reportId }}
+              onViewDetails={handleReportViewDetails}
+              onCancel={handleReportCancel}
+            />
+          )}
+        </View>
       )}
 
       {sosReceivedVariant && (
@@ -3082,11 +3074,16 @@ const styles = StyleSheet.create({
     color: '#111827',
     includeFontPadding: false,
   },
-  typhoonBannerWrap: {
+  // Stacked map notifications (typhoon banner, dispatch bar, report bar).
+  // A single absolutely-positioned column so flex layout keeps the ~12px gap
+  // between bars as any of them expands/collapses/appears/disappears.
+  notifStack: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
+    top: NOTIF_STACK_TOP,
+    left: 12,
+    right: 12,
+    gap: NOTIF_GAP,
+    zIndex: 100,
+    elevation: 100,
   },
 });

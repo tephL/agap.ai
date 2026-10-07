@@ -71,7 +71,7 @@ export default function ReportSubmittedBar({
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={style}>
       <View style={styles.card}>
         <View style={styles.accent} />
 
@@ -167,13 +167,6 @@ export default function ReportSubmittedBar({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    top: 35,
-    left: 12,
-    right: 12,
-    zIndex: 20,
-  },
   card: {
     flexDirection: "row",
     backgroundColor: colors.white,
