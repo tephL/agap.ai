@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
+  ScrollView,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -66,19 +67,20 @@ export default function Assistant() {
   const wasOnlineRef = useRef(isOnline);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
-      setInputFocused(true);
-    });
+  const showSub = Keyboard.addListener("keyboardDidShow", () => {
+    setInputFocused(true);
+    scrollToBottom();
+  });
 
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setInputFocused(false);
-    });
+  const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+    setInputFocused(false);
+  });
 
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+  return () => {
+    showSub.remove();
+    hideSub.remove();
+  };
+}, [scrollToBottom]);
 
   // Hazard context captured from the "?" button on a hazard layer. Router
   // params are strings, so re-quote the var level. Only sent with the
@@ -293,23 +295,52 @@ export default function Assistant() {
   return (
     <View style={styles.welcomeContainer}>
       <View style={styles.logoHalo}>
-        <View style={styles.logoWrap}>
-          <Image
-            source={require("../../assets/icons/logo.png")}
-            style={styles.logoImage}
-          />
+        <View style={styles.logoRing}>
+          <View style={styles.logoWrap}>
+            <Image
+              source={require("../../assets/icons/logo.png")}
+              style={styles.logoImage}
+            />
+          </View>
         </View>
       </View>
+
       <Text style={styles.welcomeTitle}>AGAP.ai</Text>
       <View style={styles.taglinePill}>
+        <Ionicons name="sparkles" size={11} color={colors.primary} />
         <Text style={styles.welcomeTagline}>MAAGAP NA KA-AGAPAY</Text>
       </View>
       <Text style={styles.welcomeSubtitle}>
-        Ang iyong AI-powered na emergency assistant. Magtanong tungkol sa paghahanda sa kalamidad, mga tip sa kaligtasan, o gabay sa emerhensya.
+        Ang iyong AI-powered na emergency assistant. Magtanong tungkol sa
+        paghahanda sa kalamidad, mga tip sa kaligtasan, o gabay sa emerhensya.
       </Text>
-      </View>
-    );
-  }, [messages.length]);
+
+      <Text style={styles.sectionLabel}>SUBUKAN MONG ITANONG</Text>
+        <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.quickScroll}
+      contentContainerStyle={styles.quickRow}
+      keyboardShouldPersistTaps="handled"
+    >
+      {SYSTEM_SUGGESTIONS.map((s) => (
+        <TouchableOpacity
+          key={s.text}
+          style={styles.quickPill}
+          activeOpacity={0.8}
+          onPress={() => handleSend(s.text)}
+          disabled={loading || !isOnline}
+        >
+          <Ionicons name={s.icon} size={16} color={colors.primary} />
+          <Text style={styles.quickText} numberOfLines={2}>
+            {s.text}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+    </View>
+  );
+}, [messages.length, handleSend, loading, isOnline]);
 
   const renderFooter = useCallback(() => {
     if (loading) {
@@ -328,10 +359,13 @@ export default function Assistant() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      keyboardVerticalOffset={0}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.bubbleA} pointerEvents="none" />
+        <View style={styles.bubbleB} pointerEvents="none" />
+
         <View style={styles.headerLeft}>
           <TouchableOpacity
             onPress={() => router.replace("/(tabs)")}
@@ -349,17 +383,13 @@ export default function Assistant() {
                 style={styles.headerLogo}
               />
             </View>
-            <View
-              style={[styles.avatarDot, !isOnline && styles.statusDotOffline]}
-            />
+            <View style={[styles.avatarDot, !isOnline && styles.dotOffline]} />
           </View>
 
           <View>
             <Text style={styles.headerTitle}>AGAP.ai</Text>
             <View style={styles.statusPill}>
-              <View
-                style={[styles.statusDot, !isOnline && styles.statusDotOffline]}
-              />
+              <View style={[styles.statusDot, !isOnline && styles.dotOffline]} />
               <Text style={styles.headerStatus}>{netInfoLabel}</Text>
             </View>
           </View>
@@ -371,105 +401,95 @@ export default function Assistant() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.85)" />
+          <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.9)" />
         </TouchableOpacity>
       </View>
 
-        {/* Chat sheet */}
-        <View style={styles.chatArea}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            ListHeaderComponent={renderHeader}
-            ListFooterComponent={renderFooter}
-            contentContainerStyle={styles.chatContent}
-            onContentSizeChange={scrollToBottom}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            style={styles.flatList}
+      {/* Chat sheet */}
+      <View style={styles.chatArea}>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={renderFooter}
+          contentContainerStyle={styles.chatContent}
+          onContentSizeChange={scrollToBottom}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.flatList}
+        />
+      </View>
+
+      {/* Input area */}
+      <View style={[styles.inputBar, { paddingBottom: inputFocused ? 10 : 70 }]}>
+        {suggestions.length > 0 && messages.length > 1 && (
+          <SuggestionChips
+            suggestions={suggestions}
+            onSelect={handleSuggestionSelect}
           />
-        </View>
+        )}
 
-        {/* Input area */}
-        <View
-          style={[
-            styles.inputBar,
-            { paddingBottom: inputFocused ? 5 : 30 },
-          ]}
-        >
-          {suggestions.length > 0 && (
-            <SuggestionChips
-              suggestions={suggestions}
-              onSelect={handleSuggestionSelect}
-            />
-          )}
-
-          {!isOnline && (
-            <View style={styles.offlineBar}>
-              <View style={styles.offlineIconWrap}>
-                <Ionicons name="cloud-offline" size={13} color={colors.white} />
-              </View>
-              <Text style={styles.offlineBarText}>
-                Wala ka sa online. Hindi available ang mga AI na tugon.
-              </Text>
+        {!isOnline && (
+          <View style={styles.offlineBar}>
+            <View style={styles.offlineIconWrap}>
+              <Ionicons name="cloud-offline" size={13} color={colors.white} />
             </View>
-          )}
-
-          <View
-            style={[
-              styles.inputWrap,
-              { marginBottom: inputFocused ? 10 : 30 },
-              inputFocused && isOnline && styles.inputWrapFocused,
-              !isOnline && styles.inputWrapOffline,
-            ]}
-          >
-            <TextInput
-              ref={inputRef}
-              style={styles.textInput}
-              placeholder={isOnline ? "Magtanong..." : "Walang internet connection..."}
-              placeholderTextColor={colors.placeholder}
-              value={input}
-              onChangeText={setInput}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              multiline
-              maxLength={2000}
-              editable={!loading && isOnline}
-              selectionColor={colors.primary}
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!input.trim() || loading || !isOnline) && styles.sendButtonDisabled,
-              ]}
-              onPress={() => handleSend()}
-              disabled={!input.trim() || loading || !isOnline}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name="arrow-up"
-                size={20}
-                color={!input.trim() || loading || !isOnline ? colors.muted : colors.white}
-              />
-            </TouchableOpacity>
+            <Text style={styles.offlineBarText}>
+              Wala ka sa online. Hindi available ang mga AI na tugon.
+            </Text>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
-  );
+        )}
+
+    <View
+  style={[
+    styles.inputWrap,
+    inputFocused && isOnline && styles.inputWrapFocused,
+    !isOnline && styles.inputWrapOffline,
+  ]}
+>
+  <TextInput
+    ref={inputRef}
+    style={styles.textInput}
+    placeholder={isOnline ? "Magtanong kay AGAP.ai..." : "Walang internet connection..."}
+    placeholderTextColor={colors.placeholder}
+    value={input}
+    onChangeText={setInput}
+    onFocus={() => { setInputFocused(true); scrollToBottom(); } }
+    onBlur={() => setInputFocused(false)}
+    multiline
+    maxLength={2000}
+    editable={!loading && isOnline}
+    selectionColor={colors.primary}
+    textAlignVertical="center"
+  />
+  <TouchableOpacity
+    style={[
+      styles.sendButton,
+      (!input.trim() || loading || !isOnline) && styles.sendButtonDisabled,
+    ]}
+    onPress={() => handleSend()}
+    disabled={!input.trim() || loading || !isOnline}
+    activeOpacity={0.8}
+  >
+    <Ionicons
+      name="arrow-up"
+      size={20}
+      color={!input.trim() || loading || !isOnline ? colors.muted : colors.white}
+    />
+  </TouchableOpacity>
+</View>
+      </View>
+    </KeyboardAvoidingView>
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.primary,
-  },
-  flex: {
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: colors.primary },
+  flex: { flex: 1 },
 
   // Header
   header: {
@@ -477,55 +497,66 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 30,
     backgroundColor: colors.primary,
+    overflow: "hidden",
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  bubbleA: {
+    position: "absolute",
+    top: -50,
+    right: -40,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(255,255,255,0.09)",
   },
+  bubbleB: {
+    position: "absolute",
+    bottom: -60,
+    left: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarSlot: {
-    width: 44,
-    height: 44,
-  },
+  avatarSlot: { width: 46, height: 46 },
   headerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.45)",
+    borderColor: "rgba(255,255,255,0.5)",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  headerLogo: {
-    width: 44,
-    height: 44,
-  },
+  headerLogo: { width: 46, height: 46 },
   avatarDot: {
     position: "absolute",
     right: -2,
     bottom: -2,
-    width: 13,
-    height: 13,
+    width: 14,
+    height: 14,
     borderRadius: 7,
     backgroundColor: "#34D399",
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: colors.primary,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 19,
+    fontWeight: "900",
     color: colors.white,
     letterSpacing: -0.3,
   },
@@ -540,80 +571,72 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.18)",
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#34D399",
-  },
-  statusDotOffline: {
-    backgroundColor: "#F59E0B",
-  },
-  headerStatus: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
-  },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#34D399" },
+  dotOffline: { backgroundColor: "#F59E0B" },
+  headerStatus: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.92)" },
 
-  // Chat sheet (rounded top corners reveal the header color behind it)
+  // Chat sheet
   chatArea: {
     flex: 1,
+    marginTop: -16,
     backgroundColor: "#F5F7FB",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: "hidden",
   },
-  flatList: {
-    flex: 1,
-  },
-  chatContent: {
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
+  flatList: { flex: 1 },
+  chatContent: { paddingTop: 20, paddingBottom: 8 },
 
   // Welcome
   welcomeContainer: {
     alignItems: "center",
-    paddingHorizontal: 36,
-    paddingTop: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 20,
   },
   logoHalo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.primary + "14",
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: colors.primary + "10",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  logoRing: {
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    backgroundColor: colors.primary + "18",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
+    width: 80,
+    height: 80,
+    borderRadius: 26,
     backgroundColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
     overflow: "hidden",
   },
-  logoImage: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-  },
+  logoImage: { width: 80, height: 80, borderRadius: 26 },
   welcomeTitle: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: "900",
     color: colors.primary,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
     marginBottom: 8,
   },
   taglinePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
@@ -625,13 +648,29 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.primary,
     letterSpacing: 1.5,
-    textTransform: "uppercase",
   },
   welcomeSubtitle: {
     fontSize: 14,
     color: colors.muted,
     textAlign: "center",
     lineHeight: 21,
+    paddingHorizontal: 16,
+  },
+  sectionLabel: {
+    alignSelf: "flex-start",
+    marginTop: 24,
+    marginBottom: 10,
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    color: colors.muted,
+  },
+  quickText: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: "700",
+    color: colors.text,
   },
 
   // Input area
@@ -645,29 +684,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     backgroundColor: colors.white,
-    borderRadius: 26,
+    borderRadius: 27,
     borderWidth: 1.5,
-    borderColor: "transparent",
+    borderColor: "#E5E9F2",
+    paddingVertical: 5,
     paddingLeft: 18,
     paddingRight: 5,
-    minHeight: 50,
-    maxHeight: 120,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
-  inputWrapFocused: {
-    borderColor: colors.primary,
+  inputWrapFocused: { borderColor: colors.primary },
+  inputWrapOffline: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
   },
   textInput: {
     flex: 1,
+    minHeight: 40,
+    maxHeight: 110,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 0,
     fontSize: 15,
-    color: colors.text,
-    paddingVertical: 13,
-    maxHeight: 120,
     lineHeight: 20,
+    color: colors.text,
+    includeFontPadding: false,
+    ...(Platform.OS === "web" ? { outlineStyle: "none" } : {}),
   },
   sendButton: {
     width: 40,
@@ -677,7 +722,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
-    marginBottom: 5,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -696,7 +740,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     backgroundColor: "#FFFBEB",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#FDE68A",
     paddingHorizontal: 10,
@@ -716,8 +760,31 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#92400E",
   },
-  inputWrapOffline: {
-    backgroundColor: "#FFFBEB",
-    borderColor: "#FDE68A",
-  },
+  quickScroll: {
+  alignSelf: "stretch",
+  marginHorizontal: -20, // lets the row scroll edge to edge
+},
+quickRow: {
+  paddingHorizontal: 20,
+  gap: 8,
+},
+quickPill: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  maxWidth: 230,
+  paddingHorizontal: 14,
+  paddingVertical: 10,
+  borderRadius: 999,
+  backgroundColor: colors.white,
+  borderWidth: 1,
+  borderColor: "#E5E9F2",
+},
+quickText: {
+  flexShrink: 1,
+  fontSize: 12.5,
+  lineHeight: 16,
+  fontWeight: "700",
+  color: colors.text,
+},
 });
