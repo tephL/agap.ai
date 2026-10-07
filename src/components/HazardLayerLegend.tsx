@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { HAZARD_LEGENDS, default as HAZARD_COLORS } from "@/constants/hazardColors";
 import { getHazardLayer } from "@/lib/pmtiles/downloadLayer";
+import { legendStyles } from "@/components/hazards/common/legendTheme";
 
 interface HazardLayerLegendProps {
   /** The one layer currently overlaid on the map (null = none). */
@@ -13,6 +14,14 @@ interface HazardLayerLegendProps {
   /** Flip between the chip and the full legend card. */
   onToggle: () => void;
 }
+
+/** Short, single-line names for the chip + card titles. */
+const TYPE_TITLES: Record<string, string> = {
+  flood: "Flood Hazard",
+  landslide: "Landslide",
+  "debris-flow": "Debris Flow",
+  "storm-surge": "Storm Surge",
+};
 
 /**
  * Bottom-left legend explaining what the active hazard overlay's colors
@@ -29,37 +38,49 @@ export default function HazardLayerLegend({
 
   const config = getHazardLayer(activeId);
   const items = HAZARD_LEGENDS[config.hazardType];
+  const accent = HAZARD_COLORS[config.hazardType].stroke;
+  const title = TYPE_TITLES[config.hazardType] ?? "Hazard";
 
   if (hidden) {
     return (
-      <View style={styles.wrapper}>
+      <View style={legendStyles.wrapper}>
         <TouchableOpacity
-          style={styles.chip}
+          style={legendStyles.chip}
           onPress={onToggle}
           activeOpacity={0.7}
           accessibilityLabel="Ipakita ang legend"
           hitSlop={8}
         >
-          <Text style={styles.chipText}>Legend</Text>
+          <View style={[legendStyles.chipDot, { backgroundColor: accent }]} />
+          <Text style={legendStyles.chipText} numberOfLines={1}>
+            {title}
+          </Text>
+          <Ionicons name="chevron-up" size={14} color="#64748B" />
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Legend</Text>
+    <View style={legendStyles.wrapper}>
+      <View style={[legendStyles.card, styles.card]}>
+        <View style={legendStyles.header}>
+          <View style={legendStyles.titleRow}>
+            <View style={[legendStyles.titleDot, { backgroundColor: accent }]} />
+            <Text style={legendStyles.title}>{title}</Text>
+          </View>
           <TouchableOpacity
             onPress={onToggle}
             hitSlop={8}
-            style={styles.collapseButton}
+            style={legendStyles.collapseButton}
             accessibilityLabel="Itago ang legend"
           >
-            <Ionicons name="chevron-down" size={16} color="#6B7280" />
+            <Ionicons name="chevron-down" size={14} color="#64748B" />
           </TouchableOpacity>
         </View>
+        <Text style={styles.subtitle} numberOfLines={2}>
+          {config.label}
+        </Text>
 
         {items.map((item) => {
           const isFlood = config.hazardType === "flood";
@@ -71,15 +92,23 @@ export default function HazardLayerLegend({
               ? `${item.color}${Math.round(alpha * 255).toString(16).padStart(2, "0")}`
               : item.color;
           return (
-            <View key={item.color + item.label} style={styles.row}>
+            <View key={item.color + item.label} style={legendStyles.row}>
               {isFlood ? (
-                <View style={styles.swatchWrap}>
-                  <View style={[styles.swatch, { backgroundColor: swatchColor }]} />
+                <View style={[legendStyles.swatchWrap, styles.floodWrap]}>
+                  <View
+                    style={[styles.floodSwatch, { backgroundColor: swatchColor }]}
+                  />
                 </View>
               ) : (
-                <View style={[styles.swatch, { backgroundColor: item.color }]} />
+                <View
+                  style={[
+                    legendStyles.swatch,
+                    styles.plainSwatch,
+                    { backgroundColor: item.color },
+                  ]}
+                />
               )}
-              <Text style={styles.rowText} numberOfLines={2}>
+              <Text style={legendStyles.rowText} numberOfLines={2}>
                 {item.label}
               </Text>
             </View>
@@ -91,96 +120,34 @@ export default function HazardLayerLegend({
 }
 
 const styles = StyleSheet.create({
-  // NOT absolute: this legend stacks vertically inside LegendStack.
-  wrapper: {
-    alignItems: "flex-start",
-  },
-  chip: {
-    minWidth: 96,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.08)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  chipText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#374151",
-    textAlign: "center",
-    includeFontPadding: false,
-  },
   card: {
-    width: 210,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.08)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 4,
+    width: 244,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#111827",
+  subtitle: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 4,
     includeFontPadding: false,
   },
-  collapseButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  // flood swatches sit on a pale frame so the 28%-opacity fill reads the way
+  // it does on the map
+  floodWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3F4F6",
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    marginTop: 8,
-  },
-  swatchWrap: {
-    width: 24,
-    height: 24,
+  floodSwatch: {
+    width: 18,
+    height: 18,
     borderRadius: 5,
-    marginRight: 12,
-    flexShrink: 0,
-    backgroundColor: "#e5e7eb",
-    overflow: "hidden",
   },
-  swatch: {
-    width: 20,
-    height: 20,
-    borderRadius: 3,
-    marginRight: 12,
-    flexShrink: 0,
-  },
-  rowText: {
-    flexShrink: 1,
-    fontSize: 14,
-    lineHeight: 18,
-    color: "#374151",
-    includeFontPadding: false,
+  plainSwatch: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
   },
 });

@@ -20,13 +20,6 @@ export const MAP_LAYERS = [
     description: "Bagyong dala-distribute: PAGASA TCWS signal per probinsya",
   },
   {
-    key: "lpas",
-    label: "Low Pressure Area",
-    icon: "radio-button-off",
-    activeColor: "#0EA5E9",
-    description: "Low pressure areas shown as hollow circles",
-  },
-  {
     key: "rain",
     label: "Rain Forecast",
     icon: "rainy-outline",

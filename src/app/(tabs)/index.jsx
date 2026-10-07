@@ -1630,7 +1630,12 @@ export default function Index() {
         return;
       }
       if (!visibleLayers.typhoons) {
-        setVisibleLayers((prev) => ({ ...prev, typhoons: true, stormSignals: false }));
+        setVisibleLayers((prev) => ({
+          ...prev,
+          typhoons: true,
+          stormSignals: false,
+          rain: false,
+        }));
         setTyphoonLegendHidden(false);
         setStormLegendHidden(true);
       }
@@ -1669,6 +1674,7 @@ export default function Index() {
           lpas: true,
           stormSignals: false,
           typhoons: false,
+          rain: false,
         }));
         setLpaLegendHidden(false);
       }
@@ -1787,8 +1793,8 @@ export default function Index() {
   // Pressing any top-row pill raises the expanded toast for that tab. The
   // Weather pill auto-enables the storm-signals overlay (legend stays
   // collapsed); every other pill turns it off again. The inner overlays are
-  // mutually exclusive across tabs, though the layers panel can toggle them
-  // independently.
+  // mutually exclusive across tabs and in the layers panel alike — only one
+  // weather overlay is ever shown.
   const handleChangeTab = useCallback((key) => {
     setActiveTab(key);
     setSheetExpanded(true);
@@ -1851,7 +1857,23 @@ export default function Index() {
   }, [userProvinceName, userLocation]);
 
   const handleToggleLayer = useCallback((key) => {
-    setVisibleLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+    // Overlays are exclusive: switching one on switches the others off so the
+    // map never stacks two weather overlays. The LPA layer rides with the
+    // typhoons group (it has no row of its own), and dams is an unrelated
+    // base layer that stays as-is.
+    setVisibleLayers((prev) => {
+      const enabled = !prev[key];
+      const next = { ...prev, [key]: enabled };
+      if (enabled) {
+        for (const other of ["typhoons", "stormSignals", "rain", "lpas"]) {
+          if (other === key || (key === "typhoons" && other === "lpas")) continue;
+          next[other] = false;
+        }
+      } else if (key === "typhoons") {
+        next.lpas = false;
+      }
+      return next;
+    });
     // toggling a layer on does NOT auto-expand its legend chip — the user
     // opens a legend explicitly by tapping its pill. "Only one legend open at
     // a time" is enforced by each legend's onToggle handler in LegendStack.
@@ -1982,15 +2004,41 @@ export default function Index() {
                       5, '#cd00cd',
                       'rgba(0,0,0,0)',
                     ],
-                    'fill-opacity': 0.4,
+                    // eased in with zoom so provinces don't read as one flat
+                    // block when the map is pulled out
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.26, 7, 0.4, 11, 0.52],
                   }}
                 />
+                {/* soft signal-coloured glow hugging each signalled province */}
+                <Layer
+                  type="line"
+                  id="stormSignalsGlow"
+                  paint={{
+                    'line-color': [
+                      'match',
+                      ['get', 'signal'],
+                      1, '#00aaff',
+                      2, '#fff200',
+                      3, '#ffaa00',
+                      4, '#ff0000',
+                      5, '#cd00cd',
+                      'rgba(0,0,0,0)',
+                    ],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 3, 4, 11, 9],
+                    'line-blur': 4,
+                    'line-opacity': 0.35,
+                  }}
+                />
+                {/* crisp white casing on top keeps the borders legible over
+                    both the tinted fill and the basemap */}
                 <Layer
                   type="line"
                   id="stormSignalsLine"
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
-                    'line-color': 'rgba(255,255,255,0.8)',
-                    'line-width': 1,
+                    'line-color': 'rgba(255,255,255,0.92)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 1.2, 11, 1.8],
+                    'line-opacity': 0.95,
                   }}
                 />
                 <Layer
@@ -2010,16 +2058,30 @@ export default function Index() {
                   }}
                 />
                 {selectedStormProvince && (
-                  <Layer
-                    type="line"
-                    id="stormSignalHighlight"
-                    filter={['==', ['get', 'name'], selectedStormProvince.name]}
-                    paint={{
-                      'line-color': '#111827',
-                      'line-width': 3,
-                      'line-opacity': 0.95,
-                    }}
-                  />
+                  <>
+                    <Layer
+                      type="line"
+                      id="stormSignalHighlightCasing"
+                      filter={['==', ['get', 'name'], selectedStormProvince.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': 'rgba(255,255,255,0.95)',
+                        'line-width': 6,
+                        'line-opacity': 0.9,
+                      }}
+                    />
+                    <Layer
+                      type="line"
+                      id="stormSignalHighlight"
+                      filter={['==', ['get', 'name'], selectedStormProvince.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': '#111827',
+                        'line-width': 2.5,
+                        'line-opacity': 0.95,
+                      }}
+                    />
+                  </>
                 )}
               </GeoJSONSource>
             )}
@@ -2043,8 +2105,20 @@ export default function Index() {
                   filter={['==', ['get', 'kind'], 'cone']}
                   paint={{
                     'fill-color': '#FACC15',
-                    'fill-opacity': 0.12,
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.08, 8, 0.16, 12, 0.22],
                     'fill-outline-color': '#CA8A04',
+                  }}
+                />
+                <Layer
+                  type="line"
+                  id="typhoonsConeEdge"
+                  filter={['==', ['get', 'kind'], 'cone']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': '#CA8A04',
+                    'line-width': 1.5,
+                    'line-dasharray': [3, 2.5],
+                    'line-opacity': 0.75,
                   }}
                 />
                 {/* wind footprint fills */}
@@ -2052,25 +2126,52 @@ export default function Index() {
                   type="fill"
                   id="typhoonsFootprintRed"
                   filter={['==', ['get', 'kind'], 'footprint_red']}
-                  paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#ef4444',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsFootprintOrange"
                   filter={['==', ['get', 'kind'], 'footprint_orange']}
-                  paint={{ 'fill-color': '#f97316', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#f97316',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsFootprintGreen"
                   filter={['==', ['get', 'kind'], 'footprint_green']}
-                  paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.22 }}
+                  paint={{
+                    'fill-color': '#22c55e',
+                    'fill-opacity': 0.22,
+                    'fill-outline-color': 'rgba(255,255,255,0.55)',
+                  }}
                 />
                 <Layer
                   type="fill"
                   id="typhoonsWindRadius"
                   filter={['==', ['get', 'kind'], 'windradius']}
-                  paint={{ 'fill-color': '#0EA5E9', 'fill-opacity': 0.08 }}
+                  paint={{
+                    'fill-color': '#0EA5E9',
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.06, 8, 0.1, 12, 0.14],
+                  }}
+                />
+                <Layer
+                  type="line"
+                  id="typhoonsWindRadiusEdge"
+                  filter={['==', ['get', 'kind'], 'windradius']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': '#0EA5E9',
+                    'line-width': 2,
+                    'line-opacity': 0.55,
+                    'line-blur': 1.5,
+                  }}
                 />
                 {/* impact halo: transparent fill + dashed intensity-colored ring */}
                 <Layer
@@ -2130,12 +2231,14 @@ export default function Index() {
                   type="line"
                   id="typhoonsForecastLineCasing"
                   filter={['==', ['get', 'segment'], 'forecast']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{ 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.55 }}
                 />
                 <Layer
                   type="line"
                   id="typhoonsForecastLine"
                   filter={['==', ['get', 'segment'], 'forecast']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
                     'line-color': '#0EA5E9',
                     'line-width': 2.5,
@@ -2147,12 +2250,14 @@ export default function Index() {
                   type="line"
                   id="typhoonsPastLineCasing"
                   filter={['==', ['get', 'segment'], 'past']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{ 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.55 }}
                 />
                 <Layer
                   type="line"
                   id="typhoonsPastLine"
                   filter={['==', ['get', 'segment'], 'past']}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                   paint={{
                     'line-color': '#475569',
                     'line-width': 2.5,
@@ -2313,23 +2418,56 @@ export default function Index() {
                       ['<', ['get', 'rainMm'], 100], '#F59E0B',
                       '#DC2626',
                     ],
-                    'fill-opacity': 0.45,
+                    'fill-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.3, 8, 0.45, 12, 0.55],
                   }}
                 />
-                {/* region borders */}
+                {/* region borders: faint dark casing keeps them readable over
+                    the pale "no rain" provinces, white core on top */}
+                <Layer
+                  type="line"
+                  id="rainRegionLineCasing"
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': 'rgba(15,23,42,0.16)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 8, 2.5, 12, 3.5],
+                  }}
+                />
                 <Layer
                   type="line"
                   id="rainRegionLine"
-                  paint={{ 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.9 }}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  paint={{
+                    'line-color': 'rgba(255,255,255,0.95)',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 8, 1.5, 12, 2.2],
+                    'line-opacity': 0.95,
+                  }}
                 />
                 {/* selected region highlight outline */}
                 {selectedRainRegion && (
-                  <Layer
-                    type="line"
-                    id="rainRegionHighlight"
-                    filter={['==', ['get', 'name'], selectedRainRegion.name]}
-                    paint={{ 'line-color': '#111827', 'line-width': 3, 'line-opacity': 0.9 }}
-                  />
+                  <>
+                    <Layer
+                      type="line"
+                      id="rainRegionHighlightCasing"
+                      filter={['==', ['get', 'name'], selectedRainRegion.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': 'rgba(255,255,255,0.95)',
+                        'line-width': 6,
+                        'line-opacity': 0.9,
+                      }}
+                    />
+                    <Layer
+                      type="line"
+                      id="rainRegionHighlight"
+                      filter={['==', ['get', 'name'], selectedRainRegion.name]}
+                      layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                      paint={{
+                        'line-color': '#111827',
+                        'line-width': 2.5,
+                        'line-opacity': 0.95,
+                      }}
+                    />
+                  </>
                 )}
               </GeoJSONSource>
             )}
