@@ -5,7 +5,7 @@ export default {
     "slug": "agapai-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/peak.png",
+    "icon": "./src/assets/icons/logo.png", 
     "scheme": "agap_ai",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,10 +13,10 @@ export default {
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./src/assets/icons/logo.png", 
         "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./src/assets/icons/logo.png", 
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tephl.agap_ai",
@@ -38,8 +38,8 @@ export default {
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#ffffff",
+          "image": "./src/assets/icons/logo.png", 
           "imageWidth": 76
         }
       ],
