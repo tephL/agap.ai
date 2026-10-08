@@ -665,11 +665,11 @@ const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
     backgroundColor: colors.background, 
-    alignItems: "center"
+    // alignItems: "center"
   },
-  flex: { flex: 1 },
+  flex: { flex: 1, width: "100%" },
   content: {
-    flexGrow: 3, 
+    flexGrow:11, 
     justifyContent: "center",
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -795,8 +795,7 @@ const styles = StyleSheet.create({
   countBadgeText: { fontSize: 11, fontWeight: "700", color: colors.text },
 
   notes: {
-    minHeight: 120,
-    maxHeight: 200,
+    height: 120,            // fixed height instead of minHeight/maxHeight
     borderRadius: 12,
     backgroundColor: colors.surface,
     paddingHorizontal: 12,
