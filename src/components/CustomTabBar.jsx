@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -26,6 +26,57 @@ const ICONS = {
 
 const primaryColor = colors.primary;
 const INACTIVE = "#9AA0A6";
+
+function OfflineBadge({ visible }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible);
+
+  useEffect(() => {
+    if (visible) setMounted(true);
+    Animated.timing(anim, {
+      toValue: visible ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !visible) setMounted(false);
+    });
+  }, [visible, anim]);
+
+  if (!mounted) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      style={[
+        styles.offlineBadge,
+        {
+          opacity: anim,
+          transform: [
+            {
+              translateY: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [8, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.offlineIconChip}>
+        <Ionicons name="cloud-offline" size={16} color="#F59E0B" />
+      </View>
+      <View style={styles.offlineTextWrap}>
+        <Text style={styles.offlineTitle}>You're offline</Text>
+        <Text style={styles.offlineSubtitle}>
+          Reports will be sent by text message
+        </Text>
+      </View>
+      <View style={styles.offlineTail} />
+    </Animated.View>
+  );
+}
 
 function TabItem({ focused, label, iconName, onPress }) {
   const anim = useRef(new Animated.Value(focused ? 1 : 0)).current;
@@ -179,15 +230,7 @@ export default function CustomTabBar({ state, descriptors, navigation }) {
         })}
       </View>
 
-      {centerRoute && !isOnline && (
-        <View style={styles.offlineBadge} pointerEvents="none">
-          <View style={styles.offlineDot} />
-          <Ionicons name="cloud-offline-outline" size={12} color={colors.white} />
-          <Text style={styles.offlineBadgeText} numberOfLines={1}>
-            Offline. Reports still send via text
-          </Text>
-        </View>
-      )}
+      {centerRoute && <OfflineBadge visible={!isOnline} />}
 
       {centerRoute && <ReportHoldButton onComplete={onHoldComplete} />}
     </View>
@@ -242,32 +285,55 @@ const styles = StyleSheet.create({
   offlineBadge: {
     position: "absolute",
     alignSelf: "center",
-    top: -80,
+    top: -96, // taller than the old pill, so nudge to taste
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    maxWidth: 260,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    gap: 10,
+    maxWidth: 300,
+    paddingLeft: 8,
+    paddingRight: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: colors.text,
     zIndex: 21,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  offlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#F59E0B",
+  offlineIconChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(245,158,11,0.18)",
   },
-  offlineBadgeText: {
+  offlineTextWrap: {
+    flexShrink: 1,
+  },
+  offlineTitle: {
     color: colors.white,
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
     letterSpacing: 0.2,
+  },
+  offlineSubtitle: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 1,
+  },
+  // small caret pointing down at the report button
+  offlineTail: {
+    position: "absolute",
+    bottom: -5,
+    left: "50%",
+    marginLeft: -5,
+    width: 10,
+    height: 10,
+    backgroundColor: colors.text,
+    transform: [{ rotate: "45deg" }],
   },
 });
